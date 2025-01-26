@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <title>Telegram MiniApp</title>
+  <!-- Обеспечиваем адаптивное отображение -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
   <!-- Подключаем шрифт Roboto (Google) -->
   <style>
     @import url('https://fonts.googleapis.com/css?family=Roboto&display=swap');
@@ -13,35 +16,57 @@
       padding: 0;
       background: #FAFAFA;
       color: #212121;
+      box-sizing: border-box;
     }
+    * {
+      box-sizing: inherit;
+    }
+
     #app {
-      max-width: 600px;
+      /* Убираем фиксированный max-width, чтобы занимало всю ширину экрана на мобильных */
+      width: 100%;
+      max-width: 800px; /* при желании можно оставить верхний предел */
       margin: 0 auto;
       padding: 16px;
     }
+
     h1 {
       text-align: center;
       color: #3F51B5; /* Indigo 500 */
+      margin-top: 0;
     }
+
+    /* Стандартные стили кнопок */
     button {
       background: #3F51B5;
       color: white;
       border: none;
-      padding: 10px 16px;
+      padding: 12px 20px;
       border-radius: 4px;
       cursor: pointer;
-      font-size: 1rem;
+      font-size: 1.1rem;
       margin: 4px;
     }
     button:hover {
       background: #303F9F;
     }
+
+    /* Кнопка "Начать" по центру, покрупнее */
+    #startBtn {
+      display: block;
+      margin: 20px auto;
+      font-size: 1.2rem;
+      padding: 14px 24px;
+    }
+
+    /* Заголовки для полей */
     label {
       display: block;
-      margin-top: 8px;
-      margin-bottom: 4px;
+      margin-top: 12px;
+      margin-bottom: 6px;
       font-weight: bold;
     }
+
     input[type="text"] {
       width: 100%;
       font-size: 1rem;
@@ -49,6 +74,7 @@
       margin-bottom: 8px;
       box-sizing: border-box;
     }
+
     .suggestion {
       background: #FFFFFF;
       padding: 8px;
@@ -60,9 +86,11 @@
     .suggestion:hover {
       background: #EEEEEE;
     }
+
     ul {
       list-style: none;
       padding: 0;
+      margin: 0;
     }
     li {
       background: #FFFFFF;
@@ -71,24 +99,36 @@
       border-radius: 4px;
       border: 1px solid #E0E0E0;
 
-      display: flex;           /* чтобы кнопки были справа */
+      /* Чтобы кнопки были справа */
+      display: flex;
       align-items: center;
       justify-content: space-between;
     }
+
     li button {
       margin: 0 4px;
     }
+
     #doneBtn {
       margin-top: 16px;
+      display: none; /* скрыт до ввода ФИО */
+    }
+
+    /* Адаптивный заголовок списка выбранных */
+    #selectedItems > h3 {
+      margin-top: 20px;
+      margin-bottom: 8px;
     }
   </style>
+  <!-- Скрипт Telegram Web Apps (для sendData, close и т.д.) -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
 <div id="app">
   <h1>IV Cocktails</h1>
 
   <!-- 1. Кнопка "Начать" -->
-  <div>
+  <div id="startContainer">
     <button id="startBtn">Начать</button>
   </div>
 
@@ -109,12 +149,28 @@
   </div>
 
   <!-- 4. Кнопка "Готово" -->
-  <button id="doneBtn" style="display:none;">Готово</button>
+  <button id="doneBtn">Готово</button>
 </div>
 
 <script>
 // -------------------------------------------------------
-// 1. "Переписываем" data.py в JavaScript
+// 1. Читаем user_id из URL (window.location.search)
+// -------------------------------------------------------
+let userId = null;
+{
+  const params = new URLSearchParams(window.location.search);
+  userId = params.get('user_id');
+  console.log("User ID:", userId);
+}
+
+// -------------------------------------------------------
+//  Подключаемся к Telegram WebApp, чтобы потом отправлять данные
+// -------------------------------------------------------
+const tg = window.Telegram.WebApp;
+tg.expand(); // Расширяемся на весь экран
+
+// -------------------------------------------------------
+// 2. Данные из data.py (коктейли + доп.препараты)
 // -------------------------------------------------------
 const COCKTAILS = [
   {
@@ -426,75 +482,74 @@ const COCKTAILS = [
   }
 ];
 
-// Дополнительные препараты
+// Доп. препараты
 const ADDITIONAL_PRICES = {
-  "глутатион":       { "price": 7000, "dose": 600 },
-  "мексидол":        { "price": 2000, "dose": 5 },
-  "актовегин":       { "price": 2500, "dose": 5 },
-  "милдронат":       { "price": 2000, "dose": 5 },
-  "цераксон":        { "price": 2000, "dose": 1000 },
-  "димефосфон":      { "price": 4000, "dose": 2 },
-  "лимфомиозот":     { "price": 2500, "dose": 1 },
-  "витамин в12":     { "price": 2000, "dose": 1 },
-  "лейковорин":      { "price": 5000, "dose": 50 },
-  "магния сульфат":  { "price": 2000, "dose": 3 },
-  "кальция глюконат": { "price": 2000, "dose": 10 },
-  "циклоферон":      { "price": 2000, "dose": 1 },
-  "церебролизин":    { "price": 2500, "dose": 10 },
-  "полиоксидоний":   { "price": 2500, "dose": 1 },
-  "пикамилон":       { "price": 2000, "dose": 1 },
-  "пирацетам":       { "price": 1000, "dose": 1000 },
-  "рибоксин":        { "price": 2000, "dose": 10 },
-  "натрия тиосульфат": { "price": 2000, "dose": 10 },
-  "панангин":        { "price": 2500, "dose": 10 },
-  "l-лизина эсцинат": { "price": 4000, "dose": 5 },
-  "l-лизин":         { "price": 4000, "dose": 10 },
-  "l-карнитин":      { "price": 1500, "dose": 5 },
+  "глутатион":       { "price": 7000,  "dose": 600 },
+  "мексидол":        { "price": 2000,  "dose": 5 },
+  "актовегин":       { "price": 2500,  "dose": 5 },
+  "милдронат":       { "price": 2000,  "dose": 5 },
+  "цераксон":        { "price": 2000,  "dose": 1000 },
+  "димефосфон":      { "price": 4000,  "dose": 2 },
+  "лимфомиозот":     { "price": 2500,  "dose": 1 },
+  "витамин в12":     { "price": 2000,  "dose": 1 },
+  "лейковорин":      { "price": 5000,  "dose": 50 },
+  "магния сульфат":  { "price": 2000,  "dose": 3 },
+  "кальция глюконат":{ "price": 2000,  "dose": 10 },
+  "циклоферон":      { "price": 2000,  "dose": 1 },
+  "церебролизин":    { "price": 2500,  "dose": 10 },
+  "полиоксидоний":   { "price": 2500,  "dose": 1 },
+  "пикамилон":       { "price": 2000,  "dose": 1 },
+  "пирацетам":       { "price": 1000,  "dose": 1000 },
+  "рибоксин":        { "price": 2000,  "dose": 10 },
+  "натрия тиосульфат": { "price": 2000,"dose": 10 },
+  "панангин":        { "price": 2500,  "dose": 10 },
+  "l-лизина эсцинат":{ "price": 4000,  "dose": 5 },
+  "l-лизин":         { "price": 4000,  "dose": 10 },
+  "l-карнитин":      { "price": 1500,  "dose": 5 },
   "коэнзим композитум": { "price": 4000, "dose": 1 },
-  "гептрал":         { "price": 4000, "dose": 400 },
-  "цитофлавин":      { "price": 4000, "dose": 10 },
-  "ремаксол":        { "price": 4000, "dose": 400 },
-  "реамберин":       { "price": 4000, "dose": 250 },
-  "берлитион":       { "price": 4000, "dose": 600 },
-  "тиоктацид":       { "price": 4000, "dose": 600 },
-  "езафосфина":      { "price": 7000, "dose": 1 },
+  "гептрал":         { "price": 4000,  "dose": 400 },
+  "цитофлавин":      { "price": 4000,  "dose": 10 },
+  "ремаксол":        { "price": 4000,  "dose": 400 },
+  "реамберин":       { "price": 4000,  "dose": 250 },
+  "берлитион":       { "price": 4000,  "dose": 600 },
+  "тиоктацид":       { "price": 4000,  "dose": 600 },
+  "езафосфина":      { "price": 7000,  "dose": 1 },
   "неотон":          { "price": 10000, "dose": 1 },
-  "церетон":         { "price": 2000, "dose": 1000 },
-  "кавинтон":        { "price": 2000, "dose": 4 },
-  "феринжект":       { "price": 6000, "dose": 1 },
-  "ликферр":         { "price": 6000, "dose": 1 },
+  "церетон":         { "price": 2000,  "dose": 1000 },
+  "кавинтон":        { "price": 2000,  "dose": 4 },
+  "феринжект":       { "price": 6000,  "dose": 1 },
+  "ликферр":         { "price": 6000,  "dose": 1 },
   "комплекс витаминов группы в": { "price": 4000, "dose": 1 },
-  "пиридоксин":      { "price": 1000, "dose": 1 },
-  "тиамин":          { "price": 2000, "dose": 2 },
-  "кокарбоксилаза":  { "price": 1000, "dose": 1 },
-  "флуимуцил":       { "price": 1500, "dose": 1 },
-  "фосфоглив":       { "price": 5000, "dose": 1 },
+  "пиридоксин":      { "price": 1000,  "dose": 1 },
+  "тиамин":          { "price": 2000,  "dose": 2 },
+  "кокарбоксилаза":  { "price": 1000,  "dose": 1 },
+  "флуимуцил":       { "price": 1500,  "dose": 1 },
+  "фосфоглив":       { "price": 5000,  "dose": 1 },
   "альбумин":        { "price": 11000, "dose": 100 },
-  "аминовен инфант": { "price": 8000, "dose": 100 },
+  "аминовен инфант": { "price": 8000,  "dose": 100 },
   "аминовен":        { "price": 10000, "dose": 500 },
-  "аддамель н":      { "price": 3000, "dose": 1 },
-  "виталипид н":     { "price": 3000, "dose": 1 },
+  "аддамель н":      { "price": 3000,  "dose": 1 },
+  "виталипид н":     { "price": 3000,  "dose": 1 },
   "смофлипид":       { "price": 10000, "dose": 100 },
-  "стерофундин":     { "price": 4000, "dose": 500 },
-  "фриостерин":      { "price": 4000, "dose": 500 },
-  "эссенциале н":    { "price": 5000, "dose": 1 },
-  "витамин с":       { "price": 2000, "dose": 1000 },
-  "витамин д":       { "price": 6000, "dose": 1 },
-  "тамерит":         { "price": 4500, "dose": 1 }
+  "стерофундин":     { "price": 4000,  "dose": 500 },
+  "фриостерин":      { "price": 4000,  "dose": 500 },
+  "эссенциале н":    { "price": 5000,  "dose": 1 },
+  "витамин с":       { "price": 2000,  "dose": 1000 },
+  "витамин д":       { "price": 6000,  "dose": 1 },
+  "тамерит":         { "price": 4500,  "dose": 1 }
 };
 
 // -------------------------------------------------------
-// 2. Глобальные переменные
+// 3. Глобальные переменные
 // -------------------------------------------------------
-let selectedItems = {};  // { 'название_препарата': количество/доза, ... }
+let selectedItems = {};  // { 'название_препарата': число (доза), ... }
 let userFio = "";
 
 // -------------------------------------------------------
-// 3. Подготовим структуры для быстрого поиска
+// 4. Подготовка структур для быстрого поиска
 // -------------------------------------------------------
 const cocktailsByName = {};
 COCKTAILS.forEach(c => {
-  // храним в нижнем регистре
   cocktailsByName[c.name.toLowerCase()] = c;
 });
 
@@ -503,15 +558,14 @@ Object.keys(ADDITIONAL_PRICES).forEach(k => {
   additionalItemsByName[k.toLowerCase()] = ADDITIONAL_PRICES[k];
 });
 
-// Объединим названия в один список (для autocomplete)
+// Единый массив названий
 const allNames = [
   ...Object.keys(cocktailsByName),
   ...Object.keys(additionalItemsByName)
 ];
 
 // -------------------------------------------------------
-// 4. Функция обрабатывает ввод в поле поиска
-//    и показывает подсказки (suggestions)
+// 5. Обработка ввода для поиска
 // -------------------------------------------------------
 function handleSearchInput() {
   const query = document.getElementById('searchInput').value.toLowerCase().trim();
@@ -520,31 +574,24 @@ function handleSearchInput() {
 
   if (!query) return;
 
-  // Ищем все названия, в которых есть "query"
   const matched = allNames.filter(name => name.includes(query));
   
   matched.forEach(m => {
     const div = document.createElement('div');
     div.className = 'suggestion';
-    // Чтобы отображалось «красиво», можно сделать первую букву заглавной:
-    div.textContent = m;
-    // При клике — добавляем в список выбранных
+    div.textContent = m; // (можно сделать первую букву заглавной)
     div.onclick = () => onSuggestionClick(m);
     suggestionsDiv.appendChild(div);
   });
 }
 
 // -------------------------------------------------------
-// 5. Клик по подсказке
-//    - если это коктейль, добавляем все его компоненты
-//    - если это препарат, просим ввести дозировку
+// 6. Клик по подсказке
 // -------------------------------------------------------
 function onSuggestionClick(name) {
-  // Проверим, что это у нас
   if (cocktailsByName[name]) {
-    // Коктейль
+    // Коктейль - добавим все компоненты
     const c = cocktailsByName[name];
-    // Добавляем все его компоненты в selectedItems
     for (const compName in c.components) {
       selectedItems[compName] = c.components[compName];
     }
@@ -560,21 +607,16 @@ function onSuggestionClick(name) {
       selectedItems[name] = parseFloat(dosage);
     }
   } else {
-    // Теоретически не должно случиться, если всё правильно
     alert("Неизвестное название: " + name);
   }
 
-  // Очистим поле ввода и подсказки
   document.getElementById('searchInput').value = '';
   document.getElementById('suggestions').innerHTML = '';
-
-  // Перерисуем список выбранных
   renderSelectedItems();
 }
 
 // -------------------------------------------------------
-// 6. Перерисовка блока с выбранными препаратами
-//    + проверка, не совпадает ли набор с коктейлем
+// 7. Перерисовка списка выбранных
 // -------------------------------------------------------
 function renderSelectedItems() {
   const container = document.getElementById('selectedItems');
@@ -589,7 +631,7 @@ function renderSelectedItems() {
 
   for (const name in selectedItems) {
     const li = document.createElement('li');
-    li.textContent = name + ": " + selectedItems[name];
+    li.textContent = `${name}: ${selectedItems[name]}`;
 
     // Кнопка "Изменить дозу"
     const editBtn = document.createElement('button');
@@ -610,7 +652,6 @@ function renderSelectedItems() {
       renderSelectedItems();
     };
 
-    // Добавляем кнопки в элемент списка
     const btnsWrapper = document.createElement('span');
     btnsWrapper.appendChild(editBtn);
     btnsWrapper.appendChild(removeBtn);
@@ -620,7 +661,7 @@ function renderSelectedItems() {
   }
   container.appendChild(ul);
 
-  // Проверим, не совпадает ли *ровно* с коктейлем
+  // Проверим, не совпадает ли набор с коктейлем
   const matchedCocktail = findMatchingCocktail(selectedItems);
   if (matchedCocktail) {
     const note = document.createElement('div');
@@ -632,8 +673,7 @@ function renderSelectedItems() {
 }
 
 // -------------------------------------------------------
-// 7. Поиск коктейля, состав которого 100% совпадает
-//    с текущим списком selectedItems (и дозировками)
+// 8. Проверка полного совпадения с коктейлем
 // -------------------------------------------------------
 function findMatchingCocktail(selected) {
   for (const c of COCKTAILS) {
@@ -641,12 +681,10 @@ function findMatchingCocktail(selected) {
     const cKeys = Object.keys(cComps);
     const sKeys = Object.keys(selected);
 
-    // Если кол-во компонентов не совпадает — сразу нет
     if (cKeys.length !== sKeys.length) continue;
 
     let allMatch = true;
     for (const ck of cKeys) {
-      // Нет такого компонента в selected или доза не совпадает
       if (!selected[ck] || selected[ck] !== cComps[ck]) {
         allMatch = false;
         break;
@@ -658,11 +696,7 @@ function findMatchingCocktail(selected) {
 }
 
 // -------------------------------------------------------
-// 8. Расчёт цены + формирование пояснений
-//    Логика:
-//    - Если состав = коктейлю, берем цену коктейля
-//    - Иначе суммируем цены по дополнительным препаратам
-//      с учётом коэффициента (доза / базовая_доза).
+// 9. Расчёт цены и пояснений
 // -------------------------------------------------------
 function calculatePrice() {
   let total = 0;
@@ -670,30 +704,23 @@ function calculatePrice() {
   const matchedCocktail = findMatchingCocktail(selectedItems);
 
   if (matchedCocktail) {
-    // Полное совпадение с коктейлем
+    // Совпало
     total = matchedCocktail.price;
     explanation += `Соответствует коктейлю "${matchedCocktail.name}" за ${matchedCocktail.price} руб.\n`;
   } else {
-    // Считаем всё как набор доп. препаратов
-    // (если есть что-то не из ADDITIONAL_PRICES — игнорируем или пишем заметку)
+    // Считаем как сумму доп. препаратов
     for (const name in selectedItems) {
       const dosage = selectedItems[name];
-      if (additionalItemsByName[name.toLowerCase()]) {
-        const info = additionalItemsByName[name.toLowerCase()];
-        const basePrice = info.price;
-        const baseDose = info.dose;
-
-        // сколько раз доза превышает "базовую"
-        let factor = dosage / baseDose;
-        // на всякий случай, если ввели 0 или что-то некорректное
-        if (factor < 0) factor = 1; 
-        if (isNaN(factor) || factor < 0.0001) factor = 1; 
-
-        const cost = Math.round(basePrice * factor);
+      const info = additionalItemsByName[name.toLowerCase()];
+      if (info) {
+        const factor = dosage / info.dose;
+        // Слегка нормализуем
+        let f = (isNaN(factor) || factor < 0.0001) ? 1 : factor;
+        const cost = Math.round(info.price * f);
         total += cost;
-        explanation += `${name}: доза ${dosage} (база ${baseDose}) => ${cost} руб.\n`;
+        explanation += `${name}: доза ${dosage} (база ${info.dose}) => ${cost} руб.\n`;
       } else {
-        explanation += `${name} не найден в базе доп. препаратов (цена = 0)\n`;
+        explanation += `${name}: не найден в базе, цена 0\n`;
       }
     }
     explanation += `Итого: ${total} руб.\n`;
@@ -702,59 +729,55 @@ function calculatePrice() {
 }
 
 // -------------------------------------------------------
-// 9. Нажатие на кнопку "Готово"
-//    Формируем итоговое сообщение, отправляем куда нужно
+// 10. "Готово" — отправляем данные в Телеграм
 // -------------------------------------------------------
 function onDone() {
   const { total, explanation } = calculatePrice();
   const msg = `Клиент: ${userFio}\n` +
               `Состав: ${JSON.stringify(selectedItems, null, 2)}\n` +
               `Итоговая цена: ${total} руб.\n\n` +
-              `Подробности:\n${explanation}`;
+              `Подробности:\n${explanation}\n` +
+              `user_id: ${userId}`;
 
-  // Покажем пример (alert), а на практике отправим в Телеграм
-  alert("Сообщение для Телеграм:\n\n" + msg);
+  // Отправляем в Телеграм (web_app_data)
+  // Можно просто отправить строку:
+  Telegram.WebApp.sendData(msg);
 
-  // Если вы используете Telegram Web Apps, то можно сделать:
-  // Telegram.WebApp.sendData(msg);
-  // Или отправить на сервер бот-обработчик:
-  // fetch('https://ваш_сервер_бота/notify', { method: 'POST', body: JSON.stringify({ userId, msg }) })
+  // Или, если нужно в формате JSON:
+  // const payload = { user_id: userId, total, explanation, selectedItems, userFio };
+  // Telegram.WebApp.sendData(JSON.stringify(payload));
 
-  // По необходимости можно закрыть веб-апп:
-  // Telegram.WebApp.close();
+  // По желанию можно закрыть мини-приложение после отправки:
+  // tg.close();
 }
 
 // -------------------------------------------------------
-// 10. Обработка кликов, показ блоков и т.д.
+// 11. Логика показа/скрытия блоков
 // -------------------------------------------------------
 function onStart() {
+  // Скрываем кнопку "Начать", показываем ввод ФИО
+  document.getElementById('startContainer').style.display = 'none';
   document.getElementById('fioContainer').style.display = 'block';
 }
 
 function onSaveFio() {
   const fio = document.getElementById('fioInput').value.trim();
   if (!fio) {
-    alert('Введите ФИО клиента');
+    alert("Введите ФИО!");
     return;
   }
   userFio = fio;
 
-  // Скрываем блок ФИО, показываем поиск
+  // Переключаемся на поиск
   document.getElementById('fioContainer').style.display = 'none';
   document.getElementById('searchContainer').style.display = 'block';
-  document.getElementById('doneBtn').style.display = 'inline-block';
+  document.getElementById('doneBtn').style.display = 'block';
 }
 
 // -------------------------------------------------------
-// 11. Инициализация
+// 12. Инициализация
 // -------------------------------------------------------
 window.onload = () => {
-  // Пример, как можно достать user_id из URL:
-  // const params = new URLSearchParams(window.location.search);
-  // const userId = params.get('user_id');
-  // console.log("User ID:", userId);
-
-  // Навешиваем обработчики
   document.getElementById('startBtn').addEventListener('click', onStart);
   document.getElementById('saveFioBtn').addEventListener('click', onSaveFio);
   document.getElementById('searchInput').addEventListener('input', handleSearchInput);
