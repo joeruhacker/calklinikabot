@@ -22,7 +22,7 @@
     }
     #app {
       width: 100%;
-      max-width: 800px; /* Можно оставить верхний предел ширины */
+      max-width: 800px;
       margin: 0 auto;
       padding: 16px;
     }
@@ -64,6 +64,16 @@
       margin-bottom: 8px;
       box-sizing: border-box;
     }
+    .base-button {
+      background: #2196F3; /* Синий */
+      margin: 6px 6px 0 0;
+      display: inline-block;
+      font-size: 0.9rem;
+      padding: 8px 16px;
+    }
+    .base-button:hover {
+      background: #1976D2;
+    }
     .suggestion {
       background: #FFFFFF;
       padding: 8px;
@@ -92,14 +102,20 @@
     }
     li button {
       margin: 0 4px;
+      font-size: 0.9rem;
     }
-    #doneBtn {
+    #doneBtn, #newBaseBtn {
       margin-top: 16px;
-      display: none; /* будет показана после ввода ФИО */
+      display: none; /* будут показаны после выбора 1-й базы */
     }
     #selectedItems > h3 {
       margin-top: 20px;
       margin-bottom: 8px;
+    }
+    .note {
+      color: green;
+      margin-top: 8px;
+      font-weight: bold;
     }
   </style>
 
@@ -122,23 +138,30 @@
     <button id="saveFioBtn">Сохранить ФИО</button>
   </div>
 
-  <!-- (3) Блок поиска + список выбранных -->
+  <!-- (3) Блок выбора базы -->
+  <div id="baseContainer" style="display:none;">
+    <label>Выберите базу (раствор):</label>
+    <div id="baseButtons"></div>
+  </div>
+
+  <!-- (4) Блок поиска + список выбранных -->
   <div id="searchContainer" style="display:none;">
-    <label>Поиск препарата или коктейля</label>
+    <label>Поиск препарата</label>
     <input type="text" id="searchInput" placeholder="Введите название..." />
     <div id="suggestions"></div>
 
     <div id="selectedItems"></div>
   </div>
 
-  <!-- (4) Кнопка "Готово" -->
+  <!-- (5) Управляющие кнопки -->
+  <button id="newBaseBtn">Новая база</button>
   <button id="doneBtn">Готово</button>
 </div>
 
 <script>
-// -------------------------------------------------------
-// 1. Читаем user_id из URL (window.location.search)
-// -------------------------------------------------------
+/* -------------------------------------------------------
+   1. Читаем user_id из URL
+---------------------------------------------------------*/
 let userId = null;
 {
   const params = new URLSearchParams(window.location.search);
@@ -146,15 +169,17 @@ let userId = null;
   console.log("User ID:", userId);
 }
 
-// -------------------------------------------------------
-// 2. Инициализация Telegram WebApp
-// -------------------------------------------------------
+/* -------------------------------------------------------
+   2. Инициализация Telegram WebApp
+---------------------------------------------------------*/
 const tg = window.Telegram.WebApp;
-tg.expand(); // Расширяемся на весь экран
+tg.expand(); // Расширяем окно
 
-// -------------------------------------------------------
-// 3. Список коктейлей (29 шт.)
-// -------------------------------------------------------
+/* -------------------------------------------------------
+   3. Список коктейлей (29 шт.) – не показываем в поиске,
+      но используем для проверки «полного совпадения»
+      или «коктейль + доп. препараты»
+---------------------------------------------------------*/
 const COCKTAILS = [
   {
     name: "Миланский коктейль",
@@ -465,9 +490,10 @@ const COCKTAILS = [
   }
 ];
 
-// -------------------------------------------------------
-// 4. Список доп. препаратов (53 шт.)
-// -------------------------------------------------------
+/* -------------------------------------------------------
+   4. Список доп. препаратов (53 шт.)
+   (Используем для поиска и расчёта цены)
+---------------------------------------------------------*/
 const ADDITIONAL_PRICES = {
   "глутатион":       { "price": 7000, "dose": 600 },
   "мексидол":        { "price": 2000, "dose": 5 },
@@ -524,33 +550,51 @@ const ADDITIONAL_PRICES = {
   "тамерит":         { "price": 4500, "dose": 1 }
 };
 
-// -------------------------------------------------------
-// 5. Глобальные переменные
-// -------------------------------------------------------
-let selectedItems = {};  // { 'препарат': доза }
-let userFio = "";
+/* -------------------------------------------------------
+   5. Базы (11 шт.) – четыре из них платные
+---------------------------------------------------------*/
+const BASES = [
+  { name: "Бустер физ.р-р", price: 0 },
+  { name: "Бустер стерил", price: 0 },
+  { name: "Глюкоза 5% 200.0", price: 0 },
+  { name: "Глюкоза 5% 100 (200-100)", price: 0 },
+  { name: "физ р-р 200", price: 0 },
+  { name: "физ р-р 250", price: 0 },
+  // Платные:
+  { name: "Стерофундин 500", price: 4000 },
+  { name: "Фриостерин 500", price: 4000 },
+  { name: "физ р-р 200", price: 0 }, // (повтор, как в ТЗ)
+  { name: "Реамбирин 250", price: 4000 },
+  { name: "Ремаксол 400", price: 4000 }
+];
 
-// -------------------------------------------------------
-// 6. Подготовка для автокомплита
-// -------------------------------------------------------
-const cocktailsByName = {};
-COCKTAILS.forEach(c => {
-  cocktailsByName[c.name.toLowerCase()] = c;
-});
+/* -------------------------------------------------------
+   6. Глобальные переменные
+---------------------------------------------------------*/
+// Массив баз для одного клиента. Каждый элемент:
+// { baseName, basePrice, selectedItems: { [препарат]: числоДозы } }
+let allBases = [];
 
+let currentBaseName = null;        // выбранная база
+let currentBasePrice = 0;          // цена выбранной базы
+let selectedItems = {};            // выбранные препараты (препарат -> доза)
+let userFio = "";                  // ФИО клиента
+
+/* -------------------------------------------------------
+   7. Подготовка для автокомплита (Только препараты!)
+   (Из поиска убираем коктейли – пункт 5 в ТЗ)
+---------------------------------------------------------*/
 const additionalItemsByName = {};
 Object.keys(ADDITIONAL_PRICES).forEach(k => {
   additionalItemsByName[k.toLowerCase()] = ADDITIONAL_PRICES[k];
 });
 
-const allNames = [
-  ...Object.keys(cocktailsByName),
-  ...Object.keys(additionalItemsByName)
-];
+// Список всех наименований для подсказок – только препараты
+const allNames = Object.keys(additionalItemsByName);
 
-// -------------------------------------------------------
-// 7. Поиск
-// -------------------------------------------------------
+/* -------------------------------------------------------
+   8. Поиск (только по препаратам)
+---------------------------------------------------------*/
 function handleSearchInput() {
   const query = document.getElementById('searchInput').value.toLowerCase().trim();
   const suggestionsDiv = document.getElementById('suggestions');
@@ -568,26 +612,19 @@ function handleSearchInput() {
   });
 }
 
-// -------------------------------------------------------
-// 8. Клик по подсказке
-// -------------------------------------------------------
+/* -------------------------------------------------------
+   9. Клик по подсказке – добавляем препарат
+---------------------------------------------------------*/
 function onSuggestionClick(name) {
-  if (cocktailsByName[name]) {
-    // Добавляем все компоненты коктейля
-    const c = cocktailsByName[name];
-    for (const compName in c.components) {
-      selectedItems[compName] = c.components[compName];
-    }
-  } else if (additionalItemsByName[name]) {
-    // Доп. препарат
-    const info = additionalItemsByName[name];
-    const standardDose = info.dose;
-    const dosage = prompt(`Введите дозировку для "${name}" (по умолчанию ${standardDose}):`, standardDose);
-    if (dosage) {
-      selectedItems[name] = parseFloat(dosage);
-    }
-  } else {
-    alert("Неизвестное название: " + name);
+  const info = additionalItemsByName[name];
+  if (!info) {
+    alert("Неизвестный препарат: " + name);
+    return;
+  }
+  const standardDose = info.dose;
+  const dosage = prompt(`Введите дозировку для "${name}" (по умолчанию ${standardDose}):`, standardDose);
+  if (dosage) {
+    selectedItems[name] = parseFloat(dosage);
   }
 
   document.getElementById('searchInput').value = '';
@@ -595,9 +632,9 @@ function onSuggestionClick(name) {
   renderSelectedItems();
 }
 
-// -------------------------------------------------------
-// 9. Перерисовка списка выбранных
-// -------------------------------------------------------
+/* -------------------------------------------------------
+   10. Перерисовка списка выбранных
+---------------------------------------------------------*/
 function renderSelectedItems() {
   const container = document.getElementById('selectedItems');
   container.innerHTML = '<h3>Выбранные препараты:</h3>';
@@ -612,6 +649,7 @@ function renderSelectedItems() {
     const li = document.createElement('li');
     li.textContent = `${name}: ${selectedItems[name]}`;
 
+    // кнопка Изменить
     const editBtn = document.createElement('button');
     editBtn.textContent = 'Изм.';
     editBtn.onclick = () => {
@@ -622,6 +660,7 @@ function renderSelectedItems() {
       }
     };
 
+    // кнопка Удалить
     const removeBtn = document.createElement('button');
     removeBtn.textContent = 'X';
     removeBtn.onclick = () => {
@@ -638,100 +677,173 @@ function renderSelectedItems() {
   }
   container.appendChild(ul);
 
-  // Проверим, не совпадает ли полностью с коктейлем
-  const matchedCocktail = findMatchingCocktail(selectedItems);
-  if (matchedCocktail) {
+  // Проверяем, не содержит ли это набор компонентов коктейль
+  const result = findCocktailPartialMatch(selectedItems);
+  if (result) {
+    const { cocktail } = result;
     const note = document.createElement('div');
-    note.style.color = 'green';
-    note.style.marginTop = '8px';
+    note.className = 'note';
     note.textContent =
-      `Данный набор соответствует коктейлю "${matchedCocktail.name}" (цена: ${matchedCocktail.price} руб.)`;
+      `Состав включает коктейль "${cocktail.name}" (цена: ${cocktail.price} руб.) 
+       + возможно есть доп. препараты.`;
     container.appendChild(note);
   }
 }
 
-// -------------------------------------------------------
-// 10. Поиск коктейля с полным совпадением
-// -------------------------------------------------------
-function findMatchingCocktail(selected) {
+/* -------------------------------------------------------
+   11. Проверка на "коктейль + доп.препараты"
+   Ищем любой коктейль, компоненты которого полностью
+   содержатся в selectedItems (с теми же дозами).
+   Если нет – возвращаем null.
+   Если есть, возвращаем { cocktail }
+---------------------------------------------------------*/
+function findCocktailPartialMatch(selected) {
   for (const c of COCKTAILS) {
-    const cComps = c.components;
-    const cKeys = Object.keys(cComps);
-    const sKeys = Object.keys(selected);
-
-    if (cKeys.length !== sKeys.length) continue;
-
     let allMatch = true;
-    for (const ck of cKeys) {
-      if (!selected[ck] || selected[ck] !== cComps[ck]) {
+    for (const ck in c.components) {
+      // ck должен быть в selected, дозировки совпадать
+      if (!selected[ck] || selected[ck] !== c.components[ck]) {
         allMatch = false;
         break;
       }
     }
-    if (allMatch) return c;
+    if (allMatch) {
+      // Нашли коктейль, компоненты которого содержатся
+      return { cocktail: c };
+    }
   }
   return null;
 }
 
-// -------------------------------------------------------
-// 11. Расчитать стоимость
-// -------------------------------------------------------
-function calculatePrice() {
-  let total = 0;
-  let explanation = "";
+/* -------------------------------------------------------
+   12. Сохранить текущую базу в allBases и очистить
+---------------------------------------------------------*/
+function saveCurrentBase() {
+  // Если база не выбрана или ничего не делали – не сохраняем
+  if (!currentBaseName) return;
+  
+  // Сохраняем
+  const baseRecord = {
+    baseName: currentBaseName,
+    basePrice: currentBasePrice,
+    selectedItems: { ...selectedItems }
+  };
+  allBases.push(baseRecord);
 
-  const matchedCocktail = findMatchingCocktail(selectedItems);
-  if (matchedCocktail) {
-    // Берём цену коктейля
-    total = matchedCocktail.price;
-    explanation += `Соответствует коктейлю "${matchedCocktail.name}" за ${matchedCocktail.price} руб.\n`;
-  } else {
-    // Суммируем доп. препараты
-    for (const name in selectedItems) {
-      const dosage = selectedItems[name];
-      const info = additionalItemsByName[name.toLowerCase()];
-      if (info) {
-        let factor = dosage / info.dose;
-        if (isNaN(factor) || factor < 0.0001) factor = 1;
-        const cost = Math.round(info.price * factor);
-        total += cost;
-        explanation += `${name}: доза ${dosage} (база ${info.dose}) => ${cost} руб.\n`;
-      } else {
-        explanation += `${name}: не найден в базе, 0 руб.\n`;
-      }
-    }
-    explanation += `Итого: ${total} руб.\n`;
-  }
-  return { total, explanation };
+  // Сбрасываем текущую
+  currentBaseName = null;
+  currentBasePrice = 0;
+  selectedItems = {};
+  renderSelectedItems();
 }
 
-// -------------------------------------------------------
-// 12. "Готово" – отправляем JSON боту
-// -------------------------------------------------------
+/* -------------------------------------------------------
+   13. Рассчитать общую стоимость всех баз
+   Логика:
+   - Для каждой базы:
+       сумма = basePrice + (если коктейль найден => цена коктейля, иначе сумма препаратов)
+       + если коктейль найден, но есть "лишние" препараты (не входящие в коктейль) – 
+         их тоже считаем по расценкам ADDITIONAL_PRICES
+---------------------------------------------------------*/
+function calculateTotalAndExplanation() {
+  let grandTotal = 0;
+  let explanation = "";
+
+  allBases.forEach((base, index) => {
+    const baseIndex = index + 1;
+    let baseSum = 0;
+    let baseExplanation = `База #${baseIndex}: ${base.baseName}\n`;
+
+    // Стоимость базы
+    baseSum += base.basePrice;
+    if (base.basePrice > 0) {
+      baseExplanation += `   Платная база: ${base.basePrice} руб.\n`;
+    }
+
+    // Проверим коктейль
+    const result = findCocktailPartialMatch(base.selectedItems);
+    if (result) {
+      const c = result.cocktail;
+      baseSum += c.price;
+      baseExplanation += `   Коктейль "${c.name}" = ${c.price} руб.\n`;
+      // теперь нужно добавить доп. препараты (то, что сверх коктейля)
+      for (const name in base.selectedItems) {
+        const userDose = base.selectedItems[name];
+        const cDose = c.components[name];
+        // Если в коктейле нет этого препарата, или в нём другая доза –
+        // это считается дополнительным препаратом.
+        if (!cDose || cDose !== userDose) {
+          // считаем стоимость этой «доп» части
+          const info = additionalItemsByName[name];
+          if (info) {
+            // если доза в коктейле меньше, а у пользователя больше, то
+            // добавляем разницу. Но для простоты считаем, что если доза
+            // отличается – это полностью «доп» доза.
+            let factor = userDose / info.dose;
+            if (isNaN(factor) || factor < 0.0001) factor = 1;
+            const cost = Math.round(info.price * factor);
+            baseSum += cost;
+            baseExplanation += `       + Доп. "${name}" (${userDose}) => ${cost} руб.\n`;
+          } else {
+            baseExplanation += `       + "${name}" не найден в базе ADDITIONAL_PRICES => 0 руб.\n`;
+          }
+        }
+      }
+    } else {
+      // Коктейль не найден, просто суммируем препараты
+      for (const name in base.selectedItems) {
+        const userDose = base.selectedItems[name];
+        const info = additionalItemsByName[name];
+        if (info) {
+          let factor = userDose / info.dose;
+          if (isNaN(factor) || factor < 0.0001) factor = 1;
+          const cost = Math.round(info.price * factor);
+          baseSum += cost;
+          baseExplanation += `   "${name}" доза ${userDose} => ${cost} руб.\n`;
+        } else {
+          baseExplanation += `   "${name}" не найден в базе => 0 руб.\n`;
+        }
+      }
+    }
+
+    baseExplanation += `   Итого по базе #${baseIndex}: ${baseSum} руб.\n\n`;
+    grandTotal += baseSum;
+    explanation += baseExplanation;
+  });
+
+  explanation += `ОБЩАЯ СУММА: ${grandTotal} руб.\n`;
+  return { total: grandTotal, explanation };
+}
+
+/* -------------------------------------------------------
+   14. "Готово" – сохраняем текущую базу (если есть)
+      и отправляем JSON боту
+---------------------------------------------------------*/
 function onDone() {
-  const { total, explanation } = calculatePrice();
+  // Сохраняем текущую базу, если пользователь что-то вводил
+  saveCurrentBase();
+
+  const { total, explanation } = calculateTotalAndExplanation();
 
   const dataToSend = {
     user_id: userId,
     user_fio: userFio,
-    selected_items: selectedItems,
+    bases: allBases,
     total_price: total,
     explanation: explanation
   };
 
   const jsonStr = JSON.stringify(dataToSend);
-
-  // Отправляем через WebApp
+  // Отправить через WebApp
   Telegram.WebApp.sendData(jsonStr);
 
-  // По желанию: tg.close();
+  // tg.close(); // по желанию
 }
 
-// -------------------------------------------------------
-// Показ/скрытие блоков
-// -------------------------------------------------------
+/* -------------------------------------------------------
+   15. Обработчики UI
+---------------------------------------------------------*/
 function onStart() {
-  // Скрыть кнопку "Начать", показать ввод ФИО
   document.getElementById('startContainer').style.display = 'none';
   document.getElementById('fioContainer').style.display = 'block';
 }
@@ -744,20 +856,58 @@ function onSaveFio() {
   }
   userFio = fio;
 
-  // Переходим к поиску, показываем кнопку "Готово"
+  // Переходим к выбору базы
   document.getElementById('fioContainer').style.display = 'none';
-  document.getElementById('searchContainer').style.display = 'block';
-  document.getElementById('doneBtn').style.display = 'block';
+  document.getElementById('baseContainer').style.display = 'block';
 }
 
-// -------------------------------------------------------
-// Инициализация
-// -------------------------------------------------------
+/**
+ * Пользователь выбрал одну из 11 баз.
+ */
+function onSelectBase(baseName, basePrice) {
+  // Если у нас есть база, которую набирали, сначала её сохраним
+  saveCurrentBase();
+
+  currentBaseName = baseName;
+  currentBasePrice = basePrice;
+  selectedItems = {};
+  
+  // Показать блок с поиском (если скрыт) + кнопки "Новая база" и "Готово"
+  document.getElementById('searchContainer').style.display = 'block';
+  document.getElementById('newBaseBtn').style.display = 'inline-block';
+  document.getElementById('doneBtn').style.display = 'inline-block';
+
+  renderSelectedItems();
+}
+
+function onNewBase() {
+  // Сохраняем то, что есть
+  saveCurrentBase();
+
+  // Предлагаем снова выбрать базу?
+  // Можно автоматически показывать baseContainer:
+  alert("Выберите новую базу в списке выше.");
+}
+
+/* -------------------------------------------------------
+   16. Инициализация UI при загрузке
+---------------------------------------------------------*/
 window.onload = () => {
   document.getElementById('startBtn').addEventListener('click', onStart);
   document.getElementById('saveFioBtn').addEventListener('click', onSaveFio);
   document.getElementById('searchInput').addEventListener('input', handleSearchInput);
   document.getElementById('doneBtn').addEventListener('click', onDone);
+  document.getElementById('newBaseBtn').addEventListener('click', onNewBase);
+
+  // Генерируем кнопки для всех баз
+  const baseButtonsDiv = document.getElementById('baseButtons');
+  BASES.forEach(b => {
+    const btn = document.createElement('button');
+    btn.className = 'base-button';
+    btn.textContent = b.name;
+    btn.onclick = () => onSelectBase(b.name, b.price);
+    baseButtonsDiv.appendChild(btn);
+  });
 };
 </script>
 </body>
