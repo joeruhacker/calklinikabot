@@ -146,6 +146,14 @@
     .base-record strong {
       color: #333;
     }
+
+    /* Отображение текущей базы */
+    #currentBaseIndicator {
+      font-size: 1.1rem;
+      font-weight: bold;
+      margin: 12px 0;
+      color: #3F51B5;
+    }
   </style>
 
   <!-- Подключаем Telegram WebApp JS -->
@@ -175,6 +183,8 @@
 
   <!-- (4) Блок поиска + список выбранных -->
   <div id="searchContainer" style="display:none;">
+    <div id="currentBaseIndicator"></div>
+    
     <label>Поиск препарата</label>
     <input type="text" id="searchInput" placeholder="Введите название..." />
     <div id="suggestions"></div>
@@ -513,7 +523,7 @@ const COCKTAILS = [
     name: "После вечеринки",
     price: 13500,
     components: {
-      "ремаксол": 500, 
+      "ремаксол": 500,
       "панангин": 10,
       "комплекс витаминов группы в": 1,
       "натрия тиосульфат": 10,
@@ -653,6 +663,7 @@ function handleSearchInput() {
 
 /* -------------------------------------------------------
    9. Добавление препарата по клику на подсказку
+      (без prompt; берем стандартную дозировку)
 ---------------------------------------------------------*/
 function onSuggestionClick(name) {
   const info = additionalItemsByName[name];
@@ -660,15 +671,10 @@ function onSuggestionClick(name) {
     alert("Неизвестный препарат: " + name);
     return;
   }
-  const standardDose = info.dose;
-  const dosage = prompt(
-    `Введите дозировку для "${name}" (по умолчанию ${standardDose}):`,
-    standardDose
-  );
-  if (dosage) {
-    selectedItems[name] = parseFloat(dosage);
-  }
+  // Подставим стандартную дозу из справочника:
+  selectedItems[name] = info.dose;
 
+  // Сбросим поиск
   document.getElementById('searchInput').value = '';
   document.getElementById('suggestions').innerHTML = '';
   renderSelectedItems();
@@ -743,7 +749,7 @@ function findCocktailPartialMatch(selected, baseName) {
   const normalizedBaseName = (baseName || '').toLowerCase();
   const baseObj = BASE_TO_COMPONENT[normalizedBaseName] || {};
 
-  // Сливаем: приоритет у selected, но если база добавляет что-то,
+  // Сливаем: приоритет у selected, но если база что-то добавляет,
   // оно попадёт в merged
   const merged = { ...baseObj, ...selected };
 
@@ -837,8 +843,8 @@ function baseIsInCocktail(cocktail, baseName) {
 
 /* -------------------------------------------------------
    15. Рассчитать общую стоимость по всем базам
-       (исправлена логика, чтобы не суммировать
-        платную базу, если она входит в коктейль)
+       (учёт, чтобы не суммировать платную базу, если
+        она входит в коктейль)
 ---------------------------------------------------------*/
 function calculateTotalAndExplanation() {
   let grandTotal = 0;
@@ -939,7 +945,8 @@ function onDone() {
   };
 
   Telegram.WebApp.sendData(JSON.stringify(dataToSend));
-  // tg.close(); // при необходимости
+  // При желании можем закрыть webview:
+  // tg.close();
 }
 
 /* -------------------------------------------------------
@@ -976,6 +983,9 @@ function onSelectBase(baseName, basePrice) {
   // Также делаем видимыми кнопки "Новая база" и "Готово"
   document.getElementById('newBaseBtn').style.display = 'inline-block';
   document.getElementById('doneBtn').style.display = 'inline-block';
+
+  // Отображаем название текущей базы
+  document.getElementById('currentBaseIndicator').textContent = "Текущая база: " + baseName;
 
   renderSelectedItems();
 }
