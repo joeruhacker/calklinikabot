@@ -544,8 +544,7 @@ const COCKTAILS = [
 ];
 
 /* -------------------------------------------------------
-   4. Список доп. препаратов
-   (название -> {price, dose})
+   4. Список доп. препаратов (название -> {price, dose})
 ---------------------------------------------------------*/
 const ADDITIONAL_PRICES = {
   "реамберин":       { "price": 4000, "dose": 250 },
@@ -650,16 +649,13 @@ let userFio = "";            // ФИО клиента
 ---------------------------------------------------------*/
 const additionalItemsByName = {};
 Object.keys(ADDITIONAL_PRICES).forEach(k => {
-  // ключ "lowercase"
   additionalItemsByName[k.toLowerCase()] = ADDITIONAL_PRICES[k];
 });
 const allNames = Object.keys(additionalItemsByName); // список названий (lowercase)
 
 /* -------------------------------------------------------
    8. Поиск препаратов (input)
-   По мере ввода формируем список подсказок, 
-   в каждой подсказке будет input с дозировкой
-   (по умолчанию — из ADDITIONAL_PRICES).
+   Формируем список подсказок, в каждой подсказке будет input с дозировкой
 ---------------------------------------------------------*/
 function handleSearchInput() {
   const query = document.getElementById('searchInput').value.toLowerCase().trim();
@@ -685,13 +681,10 @@ function handleSearchInput() {
     const addBtn = document.createElement('button');
     addBtn.textContent = 'Добавить';
     addBtn.onclick = () => {
-      // Добавляем в selectedItems
       const d = parseFloat(doseInput.value) || info.dose;
-      selectedItems[m] = d;
-      // очищаем строку поиска + подсказки
+      selectedItems[m] = (selectedItems[m] || 0) + d;
       document.getElementById('searchInput').value = '';
       suggestionsDiv.innerHTML = '';
-      // рендер списка
       renderSelectedItems();
     };
 
@@ -752,7 +745,6 @@ function renderSelectedItems() {
   container.appendChild(ul);
 
   // Проверяем, не содержит ли данный набор ( + база ) готовый коктейль
-  // (старая логика — только в рамках одной базы)
   const singleBaseResult = findCocktailPartialMatch(selectedItems, currentBaseName);
   if (singleBaseResult) {
     const { cocktail } = singleBaseResult;
@@ -760,35 +752,54 @@ function renderSelectedItems() {
     note.className = 'note';
     note.textContent =
       `Состав этой базы включает коктейль "${cocktail.name}" (цена: ${cocktail.price} руб.) 
-       (возможно есть доп. препараты).`;
+(возможно, есть доп. препараты сверх рецепта).`;
     container.appendChild(note);
   }
 }
 
 /* -------------------------------------------------------
-   10. Поиск «коктейля + доп. препараты» внутри 1 базы.
-   Учитываем, что платная база может сама добавлять
-   компоненты (из BASE_TO_COMPONENT).
+   10. Новая функция: findCocktailPartialMatch
+   Разрешаем «дозы >=» вместо точного равенства.
+   Возвращает { cocktail, leftover } или null.
 ---------------------------------------------------------*/
 function findCocktailPartialMatch(selected, baseName) {
   const normalizedBaseName = (baseName || '').toLowerCase();
   const baseObj = BASE_TO_COMPONENT[normalizedBaseName] || {};
 
-  // merged = компоненты базы + выбранные препараты
-  const merged = { ...baseObj, ...selected };
+  // Сольём компоненты базы + выбранные
+  const merged = {};
+  for (const k in baseObj) {
+    merged[k] = (merged[k] || 0) + baseObj[k];
+  }
+  for (const k in selected) {
+    merged[k] = (merged[k] || 0) + selected[k];
+  }
 
+  // Перебираем все коктейли
   for (const c of COCKTAILS) {
-    let allMatch = true;
+    let enough = true;
     for (const ck in c.components) {
-      if (!merged[ck] || merged[ck] !== c.components[ck]) {
-        allMatch = false;
+      if (!merged[ck] || merged[ck] < c.components[ck]) {
+        enough = false;
         break;
       }
     }
-    if (allMatch) {
-      return { cocktail: c };
+    if (!enough) continue;
+
+    // Если «хватает» по всем компонентам,
+    // сформируем leftover (избыточные дозировки)
+    const leftover = { ...merged };
+    for (const ck in c.components) {
+      leftover[ck] -= c.components[ck];
+      if (leftover[ck] <= 0) {
+        delete leftover[ck]; 
+      }
     }
+
+    return { cocktail: c, leftover };
   }
+
+  // Если ничего не подошло
   return null;
 }
 
@@ -843,13 +854,12 @@ function renderPreviousBases() {
 }
 
 /* -------------------------------------------------------
-   13. Проверяем, входит ли платная база (baseName)
-       в сам коктейль (cocktail).
+   13. Проверка, входит ли платная база в коктейль 
+       (точное соответствие доз в рецепте).
 ---------------------------------------------------------*/
 function baseIsInCocktail(cocktail, baseName) {
   const baseKeyVals = BASE_TO_COMPONENT[baseName.toLowerCase()];
   if (!baseKeyVals) return false;
-  // проверим все компоненты базы
   for (const k in baseKeyVals) {
     if (cocktail.components[k] !== baseKeyVals[k]) {
       return false;
@@ -859,86 +869,98 @@ function baseIsInCocktail(cocktail, baseName) {
 }
 
 /* 
-   14. "Глобальная" проверка: 
-       - соберём все препараты со всех баз (учитывая платные)
-       - проверим, не совпадает ли оно (ровно!) с одним коктейлем
-         без лишних компонентов.
-
-   Если совпадает — значит все эти разрозненные записи формируют
-   один единственный коктейль, и его цена фиксированная.
-
-   Если не совпадает — используем "старый" посрочный расчёт.
+   14. Глобальный поиск одного-единственного коктейля 
+       по всем базам. Разрешаем «доз >=».
 */
 function findSingleGlobalCocktail() {
-  // Сольём все препараты (и компоненты баз) в один объект.
-  // Пример: [{baseName, basePrice, selectedItems}, ...]
-  // Пропустим basePrice (это пока не нужно), но если база платная
-  // и является "ингредиентом" коктейля, учтём как препарат.
+  // Сольём все препараты (и компоненты платных баз) в один объект globalItems
   const globalItems = {};
 
   for (const b of allBases) {
-    // учтём саму базу, если она в BASE_TO_COMPONENT
     const baseNormalized = b.baseName.toLowerCase();
     const baseComp = BASE_TO_COMPONENT[baseNormalized] || {};
-
-    // добавляем компоненты базы
     for (const k in baseComp) {
       globalItems[k] = (globalItems[k] || 0) + baseComp[k];
     }
-
-    // добавляем препараты
     for (const k in b.selectedItems) {
       globalItems[k] = (globalItems[k] || 0) + b.selectedItems[k];
     }
   }
 
-  // Теперь пытаемся найти ровное совпадение с одним из коктейлей
-  // "Ровное" = все компоненты коктейля совпадают,
-  // и в globalItems нет лишних.
+  // Ищем коктейль, на который «хватает» доз
   for (const c of COCKTAILS) {
-    // 1) проверим что все компоненты коктейля есть в globalItems с той же дозой
-    let allMatch = true;
+    let enough = true;
     for (const ck in c.components) {
-      if (!globalItems[ck] || globalItems[ck] !== c.components[ck]) {
-        allMatch = false;
+      if (!globalItems[ck] || globalItems[ck] < c.components[ck]) {
+        enough = false;
         break;
       }
     }
-    // 2) проверим, нет ли в globalItems лишних компонент
-    if (allMatch) {
-      // Убедимся, что количество ключей одинаково
-      const keysC = Object.keys(c.components);
-      const keysG = Object.keys(globalItems);
-      if (keysC.length === keysG.length) {
-        // Совпали полностью
-        return c; 
+    if (!enough) continue;
+
+    // Формируем leftover
+    const leftover = { ...globalItems };
+    for (const ck in c.components) {
+      leftover[ck] -= c.components[ck];
+      if (leftover[ck] <= 0) {
+        delete leftover[ck];
       }
     }
+    return { cocktail: c, leftover };
   }
+
   return null;
 }
 
 /* -------------------------------------------------------
-   15. Рассчитать итог (учитывая глобальный поиск коктейля)
+   15. Расчёт итоговой цены + объяснение
 ---------------------------------------------------------*/
 function calculateTotalAndExplanation() {
-  // Сначала проверим, не формирует ли всё вместе ровно один коктейль:
-  const globalCocktail = findSingleGlobalCocktail();
-  if (globalCocktail) {
-    // Если нашли ровно один коктейль и нет лишних компонентов —
-    // значит общая цена = price коктейля.
-    // Но что насчёт платных баз? 
-    // Если платная база "входит" в этот коктейль (дозировка совпадает), 
-    // то мы её не считаем отдельно. 
-    // Т.е. никаких надбавок, просто фиксированная цена.
-    const total = globalCocktail.price;
-    const explanation = `Обнаружен единый коктейль "${globalCocktail.name}", 
-без лишних компонентов. Цена: ${total} руб.`;
+  // 1) Сначала проверяем, не формирует ли всё вместе 1 глобальный коктейль
+  const globalCocktailCheck = findSingleGlobalCocktail();
+  if (globalCocktailCheck) {
+    // Если нашли единый коктейль:
+    const c = globalCocktailCheck.cocktail;
+    const leftover = globalCocktailCheck.leftover;
+    let total = c.price;
+    let explanation = `Обнаружен единый коктейль "${c.name}" (цена: ${c.price} руб.)\n`;
+
+    // Добавим стоимость leftover + платных баз, которые не входят в коктейль
+    // Поскольку у нас всё разбито по базам, придётся пройтись отдельно:
+    let leftoverCost = 0;
+    let baseCost = 0;
+    allBases.forEach((b, index) => {
+      const baseNormalized = b.baseName.toLowerCase();
+      const isBaseInCocktail = baseIsInCocktail(c, baseNormalized);
+      if (b.basePrice > 0 && !isBaseInCocktail) {
+        baseCost += b.basePrice;
+      }
+    });
+
+    // leftover построчно
+    for (const name in leftover) {
+      const userDose = leftover[name];
+      const info = additionalItemsByName[name.toLowerCase()];
+      if (info) {
+        let factor = userDose / info.dose;
+        if (factor < 0.0001) factor = 1;
+        leftoverCost += Math.round(info.price * factor);
+      }
+    }
+
+    total += baseCost + leftoverCost;
+    if (baseCost > 0) {
+      explanation += `+ Платные базы вне коктейля: ${baseCost} руб.\n`;
+    }
+    if (leftoverCost > 0) {
+      explanation += `+ Доп. доза сверх коктейля: ${leftoverCost} руб.\n`;
+    }
+
+    explanation += `Итого: ${total} руб.`;
     return { total, explanation };
   }
 
-  // Если не нашли единый коктейль, 
-  // считаем "построчно" по старому алгоритму:
+  // 2) Иначе — подробный расчёт по каждой базе
   let grandTotal = 0;
   let explanation = "Подробный расчёт по базам:\n";
 
@@ -947,46 +969,43 @@ function calculateTotalAndExplanation() {
     let baseSum = 0;
     let baseExplanation = `База #${baseIndex}: ${base.baseName}\n`;
 
-    // 1) проверяем «коктейль в рамках этой базы»
+    // Проверка «местного» коктейля
     const localCheck = findCocktailPartialMatch(base.selectedItems, base.baseName);
     if (localCheck) {
       const c = localCheck.cocktail;
+      const leftover = localCheck.leftover;
 
-      // учтём платную базу (только если она не входит в коктейль):
+      // Платная база, если она не включена в этот коктейль
       if (base.basePrice > 0 && !baseIsInCocktail(c, base.baseName)) {
         baseSum += base.basePrice;
         baseExplanation += `   Платная база: ${base.basePrice} руб.\n`;
       }
-      // прибавим цену коктейля
+
+      // Сама цена коктейля
       baseSum += c.price;
       baseExplanation += `   Коктейль "${c.name}": ${c.price} руб.\n`;
 
-      // доп. препараты сверх коктейля
-      for (const name in base.selectedItems) {
-        const userDose = base.selectedItems[name];
-        const cDose = c.components[name];
-        if (!cDose || cDose !== userDose) {
-          const info = additionalItemsByName[name.toLowerCase()];
-          if (info) {
-            let factor = userDose / info.dose;
-            if (factor < 0.0001) factor = 1; 
-            const cost = Math.round(info.price * factor);
-            baseSum += cost;
-            baseExplanation += `       + "${name}" доза ${userDose} => ${cost} руб.\n`;
-          } else {
-            baseExplanation += `       + "${name}" нет в базе ADDITIONAL_PRICES => 0 руб.\n`;
-          }
+      // leftover (то, что сверх рецептуры)
+      for (const name in leftover) {
+        const userDose = leftover[name];
+        const info = additionalItemsByName[name.toLowerCase()];
+        if (info) {
+          let factor = userDose / info.dose;
+          if (factor < 0.0001) factor = 1;
+          const cost = Math.round(info.price * factor);
+          baseSum += cost;
+          baseExplanation += `       + "${name}" (доп. доза ${userDose}) => ${cost} руб.\n`;
+        } else {
+          baseExplanation += `       + "${name}" (неизвестно) => 0 руб.\n`;
         }
       }
 
     } else {
-      // никакого коктейля в этой базе
-      // платная база (если есть)
+      // Никакого коктейля: всё тарифицируем построчно + учитываем платность базы
       if (base.basePrice > 0) {
         baseSum += base.basePrice;
         baseExplanation += `   Платная база: ${base.basePrice} руб.\n`;
       }
-      // препараты
       for (const name in base.selectedItems) {
         const userDose = base.selectedItems[name];
         const info = additionalItemsByName[name.toLowerCase()];
@@ -1057,7 +1076,7 @@ function onSelectBase(baseName, basePrice) {
   // Сохраняем, если уже какая-то база была выбрана
   saveCurrentBase();
 
-  // Теперь активируем новую базу
+  // Активируем новую базу
   currentBaseName = baseName;
   currentBasePrice = basePrice;
   selectedItems = {};
