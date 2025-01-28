@@ -211,8 +211,7 @@ const tg = window.Telegram.WebApp;
 tg.expand(); // Расширяем окно
 
 /* -------------------------------------------------------
-   3. Список коктейлей (не показываем в поиске,
-      но используем для проверки «коктейль + доп. препараты»
+   3. Список коктейлей
 ---------------------------------------------------------*/
 const COCKTAILS = [
   {
@@ -514,7 +513,7 @@ const COCKTAILS = [
     name: "После вечеринки",
     price: 13500,
     components: {
-      "ремаксол": 500,
+      "ремаксол": 500, /* Обратите внимание: в базе 400, здесь 500, могут быть расхождения */
       "панангин": 10,
       "комплекс витаминов группы в": 1,
       "натрия тиосульфат": 10,
@@ -526,7 +525,6 @@ const COCKTAILS = [
 
 /* -------------------------------------------------------
    4. Список доп. препаратов
-   (для поиска и расчёта цены)
 ---------------------------------------------------------*/
 const ADDITIONAL_PRICES = {
   "глутатион":       { "price": 7000, "dose": 600 },
@@ -585,7 +583,7 @@ const ADDITIONAL_PRICES = {
 };
 
 /* -------------------------------------------------------
-   5. Базы (11 шт.), некоторые платные
+   5. Базы (некоторые платные)
 ---------------------------------------------------------*/
 const BASES = [
   { name: "Бустер физ.р-р", price: 0 },
@@ -601,6 +599,19 @@ const BASES = [
   { name: "Реамбирин 250", price: 4000 },
   { name: "Ремаксол 400", price: 4000 }
 ];
+
+/* 
+  Мапа для учёта "платной базы" как ингредиента коктейля.
+  Например, если выбрана база "Реамбирин 250" => 
+    добавляем в список ингредиентов { реамберин: 250 } 
+  чтобы findCocktailPartialMatch увидела полный состав.
+*/
+const BASE_TO_COMPONENT = {
+  "реамбирин 250":  { "реамберин": 250 },
+  "ремаксол 400":   { "ремаксол": 400 },
+  "стерофундин 500": { "стерофундин": 500 },
+  "фриостерин 500": { "фриостерин": 500 }
+};
 
 /* -------------------------------------------------------
    6. Глобальные переменные
@@ -665,6 +676,7 @@ function onSuggestionClick(name) {
 
 /* -------------------------------------------------------
    10. Перерисовка списка выбранных препаратов
+       (добавили передачу currentBaseName в findCocktailPartialMatch)
 ---------------------------------------------------------*/
 function renderSelectedItems() {
   const container = document.getElementById('selectedItems');
@@ -708,8 +720,8 @@ function renderSelectedItems() {
   }
   container.appendChild(ul);
 
-  // Проверяем, не содержит ли набор готовый коктейль (частичное совпадение)
-  const result = findCocktailPartialMatch(selectedItems);
+  // ВАЖНО: для проверки "коктейль + доп. препараты"
+  const result = findCocktailPartialMatch(selectedItems, currentBaseName);
   if (result) {
     const { cocktail } = result;
     const note = document.createElement('div');
@@ -721,17 +733,26 @@ function renderSelectedItems() {
   }
 }
 
-/* -------------------------------------------------------
-   11. Поиск «коктейля + доп. препараты»
-   Если найден коктейль, чьи компоненты полностью
-   присутствуют в selectedItems (та же доза) – вернём {cocktail}.
-   Если нет – null.
----------------------------------------------------------*/
-function findCocktailPartialMatch(selected) {
+/* 
+  11. Поиск коктейля с учётом базы:
+      Если в коктейле есть компоненты (включая реамберин и т.д.), 
+      которые "сидят" в платной базе, то мы учитываем их тоже.
+*/
+function findCocktailPartialMatch(selected, baseName) {
+  // Собираем "виртуальный" словарь, в который добавим
+  // компоненты выбранной базы (если она есть в BASE_TO_COMPONENT)
+  const normalizedBaseName = (baseName || '').toLowerCase();
+  const baseObj = BASE_TO_COMPONENT[normalizedBaseName] || {};
+
+  // Сливаем: приоритет у selected, но если база добавляет что-то ещё,
+  // оно попадёт в merged
+  const merged = { ...baseObj, ...selected };
+
   for (const c of COCKTAILS) {
     let allMatch = true;
     for (const ck in c.components) {
-      if (!selected[ck] || selected[ck] !== c.components[ck]) {
+      // Проверяем, что в merged есть ck и дозировка совпадает
+      if (!merged[ck] || merged[ck] !== c.components[ck]) {
         allMatch = false;
         break;
       }
@@ -797,6 +818,7 @@ function renderPreviousBases() {
 
 /* -------------------------------------------------------
    14. Рассчитать общую стоимость по всем базам
+       (добавили передачу base.baseName в findCocktailPartialMatch)
 ---------------------------------------------------------*/
 function calculateTotalAndExplanation() {
   let grandTotal = 0;
@@ -813,17 +835,20 @@ function calculateTotalAndExplanation() {
       baseExplanation += `   Платная база: ${base.basePrice} руб.\n`;
     }
 
-    // Проверим «коктейль + доп.препараты»
-    const result = findCocktailPartialMatch(base.selectedItems);
+    // Проверим «коктейль + доп.препараты», учитывая базу
+    const result = findCocktailPartialMatch(base.selectedItems, base.baseName);
     if (result) {
       const c = result.cocktail;
       baseSum += c.price;
       baseExplanation += `   Коктейль "${c.name}": ${c.price} руб.\n`;
 
-      // доп. препараты сверх коктейля
+      // Доп. препараты сверх коктейля
+      // (если доза в базе.selectedItems отличается или
+      //  если есть препарат, не входящий в коктейль)
       for (const name in base.selectedItems) {
         const userDose = base.selectedItems[name];
         const cDose = c.components[name];
+        // если коктейль не содержит этот препарат или доза другая
         if (!cDose || cDose !== userDose) {
           const info = additionalItemsByName[name.toLowerCase()];
           if (info) {
@@ -831,11 +856,9 @@ function calculateTotalAndExplanation() {
             if (isNaN(factor) || factor < 0.0001) factor = 1;
             const cost = Math.round(info.price * factor);
             baseSum += cost;
-            baseExplanation += 
-              `       + "${name}" (${userDose}) => ${cost} руб.\n`;
+            baseExplanation += `       + "${name}" (${userDose}) => ${cost} руб.\n`;
           } else {
-            baseExplanation += 
-              `       + "${name}" нет в базе ADDITIONAL_PRICES => 0 руб.\n`;
+            baseExplanation += `       + "${name}" нет в базе ADDITIONAL_PRICES => 0 руб.\n`;
           }
         }
       }
@@ -849,11 +872,9 @@ function calculateTotalAndExplanation() {
           if (isNaN(factor) || factor < 0.0001) factor = 1;
           const cost = Math.round(info.price * factor);
           baseSum += cost;
-          baseExplanation += 
-            `   "${name}" доза ${userDose} => ${cost} руб.\n`;
+          baseExplanation += `   "${name}" доза ${userDose} => ${cost} руб.\n`;
         } else {
-          baseExplanation += 
-            `   "${name}" не найдено в ADDITIONAL_PRICES => 0 руб.\n`;
+          baseExplanation += `   "${name}" не найдено в ADDITIONAL_PRICES => 0 руб.\n`;
         }
       }
     }
