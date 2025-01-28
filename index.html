@@ -513,7 +513,7 @@ const COCKTAILS = [
     name: "После вечеринки",
     price: 13500,
     components: {
-      "ремаксол": 500, /* Обратите внимание: в базе 400, здесь 500, могут быть расхождения */
+      "ремаксол": 500, 
       "панангин": 10,
       "комплекс витаминов группы в": 1,
       "натрия тиосульфат": 10,
@@ -603,7 +603,7 @@ const BASES = [
 /* 
   Мапа для учёта "платной базы" как ингредиента коктейля.
   Например, если выбрана база "Реамбирин 250" => 
-    добавляем в список ингредиентов { реамберин: 250 } 
+    добавляем в проверку { реамберин: 250 } 
   чтобы findCocktailPartialMatch увидела полный состав.
 */
 const BASE_TO_COMPONENT = {
@@ -676,7 +676,6 @@ function onSuggestionClick(name) {
 
 /* -------------------------------------------------------
    10. Перерисовка списка выбранных препаратов
-       (добавили передачу currentBaseName в findCocktailPartialMatch)
 ---------------------------------------------------------*/
 function renderSelectedItems() {
   const container = document.getElementById('selectedItems');
@@ -720,7 +719,7 @@ function renderSelectedItems() {
   }
   container.appendChild(ul);
 
-  // ВАЖНО: для проверки "коктейль + доп. препараты"
+  // Проверяем, не содержит ли набор готовый коктейль
   const result = findCocktailPartialMatch(selectedItems, currentBaseName);
   if (result) {
     const { cocktail } = result;
@@ -733,18 +732,18 @@ function renderSelectedItems() {
   }
 }
 
-/* 
-  11. Поиск коктейля с учётом базы:
-      Если в коктейле есть компоненты (включая реамберин и т.д.), 
-      которые "сидят" в платной базе, то мы учитываем их тоже.
-*/
+/* -------------------------------------------------------
+   11. Поиск «коктейля + доп. препараты» 
+       (учитываем, что платная база может сама быть
+        составной частью коктейля)
+---------------------------------------------------------*/
 function findCocktailPartialMatch(selected, baseName) {
   // Собираем "виртуальный" словарь, в который добавим
   // компоненты выбранной базы (если она есть в BASE_TO_COMPONENT)
   const normalizedBaseName = (baseName || '').toLowerCase();
   const baseObj = BASE_TO_COMPONENT[normalizedBaseName] || {};
 
-  // Сливаем: приоритет у selected, но если база добавляет что-то ещё,
+  // Сливаем: приоритет у selected, но если база добавляет что-то,
   // оно попадёт в merged
   const merged = { ...baseObj, ...selected };
 
@@ -816,9 +815,30 @@ function renderPreviousBases() {
     allBases.length > 0 ? 'block' : 'none';
 }
 
+/* 
+   14. Проверяем, входит ли платная база в сам коктейль 
+       (т.е. совпадает ли дозировка «ингредиента базы» 
+        с требуемым коктейлем)
+*/
+function baseIsInCocktail(cocktail, baseName) {
+  const baseKeyVals = BASE_TO_COMPONENT[baseName.toLowerCase()];
+  if (!baseKeyVals) return false; 
+  // Например, "Реамбирин 250" => { реамберин: 250 }
+  // Проверяем каждое поле в baseKeyVals:
+  for (const k in baseKeyVals) {
+    // Если коктейль не содержит этого ингредиента 
+    // или содержит в другой дозировке – значит не совпадает.
+    if (cocktail.components[k] !== baseKeyVals[k]) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /* -------------------------------------------------------
-   14. Рассчитать общую стоимость по всем базам
-       (добавили передачу base.baseName в findCocktailPartialMatch)
+   15. Рассчитать общую стоимость по всем базам
+       (исправлена логика, чтобы не суммировать
+        платную базу, если она входит в коктейль)
 ---------------------------------------------------------*/
 function calculateTotalAndExplanation() {
   let grandTotal = 0;
@@ -829,22 +849,30 @@ function calculateTotalAndExplanation() {
     let baseSum = 0;
     let baseExplanation = `База #${baseIndex}: ${base.baseName}\n`;
 
-    // Стоимость базы
-    baseSum += base.basePrice;
-    if (base.basePrice > 0) {
-      baseExplanation += `   Платная база: ${base.basePrice} руб.\n`;
-    }
-
-    // Проверим «коктейль + доп.препараты», учитывая базу
+    // Проверяем «коктейль + доп.препараты», учитывая базу
     const result = findCocktailPartialMatch(base.selectedItems, base.baseName);
     if (result) {
       const c = result.cocktail;
+
+      // Проверяем, входит ли платная база в этот коктейль
+      if (base.basePrice > 0 && baseIsInCocktail(c, base.baseName)) {
+        // Если база полностью совпадает с тем, что у коктейля
+        // – не добавляем к цене, т.к. цена коктейля фиксирована.
+        baseExplanation += `   Платная база входит в состав коктейля: НЕ добавляем отдельно.\n`;
+      } else {
+        // Если база платная, но не совпадает с ингредиентом коктейля
+        // (или бесплатная) – добавляем:
+        baseSum += base.basePrice;
+        if (base.basePrice > 0) {
+          baseExplanation += `   Платная база: ${base.basePrice} руб.\n`;
+        }
+      }
+
+      // Добавляем стоимость коктейля
       baseSum += c.price;
       baseExplanation += `   Коктейль "${c.name}": ${c.price} руб.\n`;
 
       // Доп. препараты сверх коктейля
-      // (если доза в базе.selectedItems отличается или
-      //  если есть препарат, не входящий в коктейль)
       for (const name in base.selectedItems) {
         const userDose = base.selectedItems[name];
         const cDose = c.components[name];
@@ -862,8 +890,13 @@ function calculateTotalAndExplanation() {
           }
         }
       }
+
     } else {
-      // Коктейль не найден, суммируем препараты поштучно
+      // Коктейль не найден, суммируем базу (если платная) + препараты поштучно
+      baseSum += base.basePrice;
+      if (base.basePrice > 0) {
+        baseExplanation += `   Платная база: ${base.basePrice} руб.\n`;
+      }
       for (const name in base.selectedItems) {
         const userDose = base.selectedItems[name];
         const info = additionalItemsByName[name.toLowerCase()];
@@ -889,7 +922,7 @@ function calculateTotalAndExplanation() {
 }
 
 /* -------------------------------------------------------
-   15. "Готово" – сохраняем текущую базу, считаем,
+   16. "Готово" – сохраняем текущую базу, считаем,
        отправляем в Телеграм
 ---------------------------------------------------------*/
 function onDone() {
@@ -910,7 +943,7 @@ function onDone() {
 }
 
 /* -------------------------------------------------------
-   16. Обработчики UI
+   17. Обработчики UI
 ---------------------------------------------------------*/
 function onStart() {
   document.getElementById('startContainer').style.display = 'none';
@@ -965,7 +998,7 @@ function onNewBase() {
 }
 
 /* -------------------------------------------------------
-   17. Инициализация при загрузке
+   18. Инициализация при загрузке
 ---------------------------------------------------------*/
 window.onload = () => {
   // Кнопки
