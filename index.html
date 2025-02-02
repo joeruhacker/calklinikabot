@@ -756,7 +756,7 @@ function findCocktailPartialMatch(selected, baseName) {
   const normalizedBaseName = (baseName || '').toLowerCase();
   const baseObj = BASE_TO_COMPONENT[normalizedBaseName] || {};
 
-  // Сольём
+  // Сольём (база + выбранные)
   const merged = {};
   for (const k in baseObj) {
     merged[k] = (merged[k] || 0) + baseObj[k];
@@ -900,18 +900,8 @@ function findSingleGlobalCocktail() {
 }
 
 /* -------------------------------------------------------
-   15. Вспомогательные функции для форматирования
+   15. Пропись (текст по базам)
 ---------------------------------------------------------*/
-function capitalize(str) {
-  if (!str) return "";
-  return str[0].toUpperCase() + str.slice(1);
-}
-
-/*
-   Пропись: просто перечисляем по базам,
-   где сначала сама база (если добавляет что-то),
-   потом препараты пользователя.
-*/
 function buildPropis() {
   let lines = [];
   allBases.forEach((b, i) => {
@@ -927,22 +917,25 @@ function buildPropis() {
   return lines.join("\n");
 }
 
-/*
-   16. Собираем explanation:
-   Возвращаем { total, explanation }
-   где explanation — в требуемом виде.
-*/
+function capitalize(str) {
+  if (!str) return "";
+  return str[0].toUpperCase() + str.slice(1);
+}
+
+/* -------------------------------------------------------
+   16. Считаем цену и формируем итоговый текст
+---------------------------------------------------------*/
 function calculateTotalAndExplanation() {
-  // Сначала ищем единый глобальный коктейль
+  // Сначала ищем, не собрался ли один большой коктейль сразу
   const globalCheck = findSingleGlobalCocktail();
   let grandTotal = 0;
 
   if (globalCheck) {
-    // Есть единый коктейль
+    // Есть единый глобальный коктейль на все базы
     const { cocktail, leftover } = globalCheck;
     grandTotal += cocktail.price;
 
-    // Платные базы вне коктейля
+    // Платные базы, которые не входят в коктейль
     let paidBasesCost = 0;
     let paidBasesStrings = [];
     allBases.forEach((b) => {
@@ -971,10 +964,8 @@ function calculateTotalAndExplanation() {
     }
     grandTotal += leftoverCost;
 
-    // Формируем нужные строки
-    const fioLine = `ФИО: ${userFio}`;
-    const totalLine = `Итоговая цена: ${grandTotal}`;
-    let detailsLine = `\nДетали расчета:\nКоктейль "${cocktail.name}" (цена: ${cocktail.price} руб.) `;
+    // Формируем нужный блок «Детали расчета»
+    let detailsLine = `Коктейль "${cocktail.name}" (цена: ${cocktail.price} руб.) `;
     if (paidBasesStrings.length > 0) {
       detailsLine += paidBasesStrings.join(" ") + " ";
     }
@@ -984,25 +975,37 @@ function calculateTotalAndExplanation() {
     detailsLine += `\nИтого: ${grandTotal} руб.`;
 
     // Пропись
-    let propis = `\n\nПропись:\n${buildPropis()}`;
+    let propis = buildPropis();
 
-    const explanation = `${fioLine}\n${totalLine}\n${detailsLine}${propis}`;
+    // Собираем финальный текст без дублирования
+    const explanation = 
+`Ваш расчет:
+
+ФИО: ${userFio}
+Итоговая цена: ${grandTotal}
+
+Детали расчета:
+${detailsLine}
+
+Пропись:
+${propis}
+`;
     return { total: grandTotal, explanation };
   }
   else {
-    // Нет одного глобального коктейля
-    // Детальный расчёт по базам
+    // Нет единого коктейля, считаем построчно по базам
     let allBasesLines = [];
     allBases.forEach((b, i) => {
       let line = `База #${i + 1}: ${b.baseName}`;
       let baseSum = 0;
 
-      // Локальный коктейль?
+      // Локальный коктейль в этой базе?
       const localCheck = findCocktailPartialMatch(b.selectedItems, b.baseName);
       if (localCheck) {
         const { cocktail, leftover } = localCheck;
-        // платная база, если не входит в коктейль
+
         let baseAdd = 0;
+        // Платная база, если она не покрывается коктейлем
         if (b.basePrice > 0 && !baseIsInCocktail(cocktail, b.baseName)) {
           baseAdd = b.basePrice;
         }
@@ -1038,7 +1041,7 @@ function calculateTotalAndExplanation() {
         line += `\n${detailStr}\n   Итого по базе #${i+1}: ${baseSum} руб.`;
       }
       else {
-        // Нет коктейля, считаем построчно
+        // Нет коктейля в этой базе, считаем препараты отдельно
         if (b.basePrice > 0) {
           baseSum += b.basePrice;
           line += `\n   Платная база (цена: ${b.basePrice} руб.)`;
@@ -1062,13 +1065,25 @@ function calculateTotalAndExplanation() {
       allBasesLines.push(line);
     });
 
-    const fioLine = `ФИО: ${userFio}`;
-    const totalLine = `Итоговая цена: ${grandTotal}`;
+    const detailsBlock = 
+`Детали расчета:
+${allBasesLines.join("\n\n")}
+\nИтого: ${grandTotal} руб.`;
 
-    let detailsBlock = `\nДетали расчета:\n${allBasesLines.join("\n\n")}\n\nИтого: ${grandTotal} руб.`;
-    let propis = `\n\nПропись:\n${buildPropis()}`;
+    const propis = buildPropis();
 
-    const explanation = `${fioLine}\n${totalLine}${detailsBlock}${propis}`;
+    // Финальный текст (без повторов ФИО/Итог)
+    const explanation = 
+`Ваш расчет:
+
+ФИО: ${userFio}
+Итоговая цена: ${grandTotal}
+
+${detailsBlock}
+
+Пропись:
+${propis}
+`;
     return { total: grandTotal, explanation };
   }
 }
@@ -1081,10 +1096,10 @@ function onDone() {
   saveCurrentBase();
   // 2) Отрисовать предыдущие
   renderPreviousBases();
-  // 3) Посчитать
+  // 3) Посчитать общий результат
   const { total, explanation } = calculateTotalAndExplanation();
 
-  // 4) Сформировать JSON (как в вашем исходном примере)
+  // 4) Сформировать объект для отправки
   const dataToSend = {
     user_id: userId,
     user_fio: userFio,
@@ -1119,7 +1134,7 @@ function onSaveFio() {
 }
 
 function onSelectBase(baseName, basePrice) {
-  // Сохраняем предыдущую
+  // Сохраняем предыдущую (если была)
   saveCurrentBase();
   // Активируем новую
   currentBaseName = baseName;
