@@ -10,7 +10,7 @@
     @import url('https://fonts.googleapis.com/css?family=Roboto&display=swap');
 
     :root {
-      --primary-color: #4285f4;
+      --primary-color: #4285f4; /* Основной синий цвет */
       --primary-dark: #3367d6;
       --background-color: #FAFAFA;
       --text-color: #212121;
@@ -29,6 +29,7 @@
       color: var(--text-color);
     }
 
+    /* Контейнер */
     #app {
       width: 100%;
       max-width: 800px;
@@ -36,12 +37,14 @@
       padding: 16px;
     }
 
+    /* Заголовок */
     h1 {
       text-align: center;
       color: var(--primary-color);
       margin-top: 0;
     }
 
+    /* Кнопки */
     button {
       background: var(--primary-color);
       color: #fff;
@@ -52,11 +55,11 @@
       font-size: 1rem;
       margin: 4px;
     }
-
     button:hover {
       background: var(--primary-dark);
     }
 
+    /* Вспомогательные кнопки (кнопка назад и т.п.) */
     .secondary-btn {
       background: #ccc;
       color: #333;
@@ -65,12 +68,12 @@
       background: #bbb;
     }
 
+    /* Инпуты (имитация Material Design) */
     .md-input {
       position: relative;
       margin: 20px 0;
       width: 100%;
     }
-
     .md-input input {
       width: 100%;
       font-size: 1rem;
@@ -81,11 +84,9 @@
       outline: none;
       transition: border-color 0.3s;
     }
-
     .md-input input:focus {
       border-color: var(--primary-color);
     }
-
     .md-input label {
       position: absolute;
       top: 12px;
@@ -95,7 +96,6 @@
       pointer-events: none;
       transition: 0.3s ease all;
     }
-
     .md-input input:focus ~ label,
     .md-input input:not(:placeholder-shown) ~ label {
       top: -8px;
@@ -103,14 +103,17 @@
       color: var(--primary-color);
     }
 
+    /* Скрытые блоки */
     .hidden {
       display: none;
     }
 
+    /* Секции */
     .section {
       margin-top: 20px;
     }
 
+    /* Подсказки (автокомплит) */
     .suggestion {
       display: flex;
       align-items: center;
@@ -132,12 +135,12 @@
       margin-right: 8px;
     }
 
+    /* Список выбранных препаратов */
     ul {
       list-style: none;
       padding: 0;
       margin: 0;
     }
-
     li {
       background: #FFFFFF;
       margin-bottom: 4px;
@@ -148,18 +151,19 @@
       align-items: center;
       justify-content: space-between;
     }
-
     li button {
       margin: 0 4px;
       font-size: 0.9rem;
     }
 
+    /* Примечание о коктейле */
     .note {
       color: green;
       margin-top: 8px;
       font-weight: bold;
     }
 
+    /* Ранее собранные базы */
     .base-record {
       border: 1px solid #ccc;
       padding: 8px;
@@ -171,6 +175,7 @@
       color: #333;
     }
 
+    /* Отображение текущей базы */
     #currentBaseIndicator {
       font-size: 1.1rem;
       font-weight: bold;
@@ -178,15 +183,17 @@
       color: var(--primary-color);
     }
 
+    /* Адаптивность */
     @media (max-width: 600px) {
       button {
         width: 100%;
         margin-bottom: 8px;
       }
     }
+
   </style>
 
-  <!-- Подключение Telegram WebApp JS -->
+  <!-- Подключаем Telegram WebApp JS -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
@@ -240,7 +247,7 @@
 
 <script>
 /* -------------------------------------------------------
-   0. Глобальные переменные и получение user_id из URL
+   0. Глобальные: чтение user_id из URL
 ---------------------------------------------------------*/
 let userId = null;
 {
@@ -250,13 +257,13 @@ let userId = null;
 }
 
 /* -------------------------------------------------------
-   1. Инициализация Telegram WebApp
+   1. Telegram WebApp init
 ---------------------------------------------------------*/
 const tg = window.Telegram.WebApp;
 tg.expand(); // Расширяем окно
 
 /* -------------------------------------------------------
-   2. Данные коктейлей
+   2. Коктейли (для быстрого определения известного состава)
 ---------------------------------------------------------*/
 const COCKTAILS = [
   {
@@ -280,11 +287,297 @@ const COCKTAILS = [
       "витамин с": 1
     }
   },
-  // Остальные коктейли можно добавить по аналогии...
+  {
+    name: "Спорт",
+    price: 12000,
+    components: {
+      "цитофлавин": 10,
+      "коэнзим композитум": 1,
+      "актовегин": 10,
+      "витамин с": 1000,
+      "l-карнитин": 10
+    }
+  },
+  {
+    name: "Антистресс",
+    price: 10000,
+    components: {
+      "комплекс витаминов группы в": 1,
+      "магния сульфат": 3,
+      "пиридоксин": 2,
+      "кокарбоксилаза": 2,
+      "глутоксим": 1,
+      "витамин с": 1000,
+      "витамин в12": 1
+    }
+  },
+  {
+    name: "Antiage",
+    price: 14000,
+    components: {
+      "глутатион": 1200,
+      "витамин с": 500
+    }
+  },
+  {
+    name: "Баланс железа",
+    price: 6500,
+    components: {
+      "феринжект": 1
+    }
+  },
+  {
+    name: "Баланс железа +",
+    price: 8000,
+    components: {
+      "феринжект": 1,
+      "мексидол": 5,
+      "витамин с": 500
+    }
+  },
+  {
+    name: "Красивая кожа",
+    price: 14000,
+    components: {
+      "эссенциале н": 2,
+      "глутатион": 600,
+      "витамин с": 1000
+    }
+  },
+  {
+    name: "Смарт",
+    price: 10000,
+    components: {
+      "цитофлавин": 10,
+      "коэнзим композитум": 1,
+      "цераксон": 1000,
+      "кавинтон": 4,
+      "актовегин": 5
+    }
+  },
+  {
+    name: "Красота+",
+    price: 12000,
+    components: {
+      "глутатион": 600,
+      "витамин с": 500,
+      "тиоктацид": 600
+    }
+  },
+  {
+    name: "Протеиновый бустер",
+    price: 8000,
+    components: {
+      "аминовен": 100,
+      "аддамель н": 0.5
+    }
+  },
+  {
+    name: "Усталость прочь",
+    price: 12000,
+    components: {
+      "тиоктацид": 600,
+      "цитофлавин": 10,
+      "комплекс витаминов группы в": 1,
+      "милдронат": 10,
+      "мексидол": 5
+    }
+  },
+  {
+    name: "Орви help",
+    price: 10000,
+    components: {
+      "реамберин": 250,
+      "комплекс витаминов группы в": 1,
+      "витамин с": 3000,
+      "полиоксидоний": 1,
+      "кальция глюконат": 10
+    }
+  },
+  {
+    name: "Здоровый сон",
+    price: 9000,
+    components: {
+      "гептрал": 400,
+      "пикамилон": 1,
+      "магния сульфат": 4
+    }
+  },
+  {
+    name: "Жиросжигание",
+    price: 14000,
+    components: {
+      "тиоктацид": 600,
+      "цитофлавин": 10,
+      "коэнзим композитум": 1,
+      "l-карнитин": 10,
+      "витамин с": 1000
+    }
+  },
+  {
+    name: "Здоровые сосуды",
+    price: 10000,
+    components: {
+      "l-лизина эсцинат": 5,
+      "мексидол": 10,
+      "актовегин": 10,
+      "витамин с": 500
+    }
+  },
+  {
+    name: "Здоровые волосы",
+    price: 15000,
+    components: {
+      "l-лизина эсцинат": 10,
+      "аминовен": 100,
+      "аддамель н": 0.5,
+      "комплекс витаминов группы в": 1,
+      "лейковорин": 50
+    }
+  },
+  {
+    name: "Антигистаминная",
+    price: 10000,
+    components: {
+      "l-лизина эсцинат": 10,
+      "магния сульфат": 3,
+      "пиридоксин": 2,
+      "натрия тиосульфат": 10,
+      "кальция глюконат": 10
+    }
+  },
+  {
+    name: "Противовирусная",
+    price: 12000,
+    components: {
+      "реамберин": 250,
+      "l-лизина эсцинат": 10,
+      "циклоферон": 1,
+      "кальция глюконат": 10,
+      "витамин с": 1000
+    }
+  },
+  {
+    name: "Пост ковид",
+    price: 10000,
+    components: {
+      "димефосфон": 2,
+      "реамберин": 250,
+      "комплекс витаминов группы в": 1,
+      "l-карнитин": 10,
+      "цераксон": 1000
+    }
+  },
+  {
+    name: "Омега",
+    price: 12000,
+    components: {
+      "смофлипид": 100,
+      "виталипид н": 2,
+      "комплекс витаминов группы в": 1
+    }
+  },
+  {
+    name: "Brain activity",
+    price: 10000,
+    components: {
+      "цитофлавин": 10,
+      "пирацетам": 3000,
+      "мексидол": 10,
+      "актовегин": 5
+    }
+  },
+  {
+    name: "Иммунитет",
+    price: 17000,
+    components: {
+      "реамберин": 250,
+      "комплекс витаминов группы в": 1,
+      "тамерит": 2,
+      "витамин с": 3000,
+      "цераксон": 1000,
+      "кальция глюконат": 10
+    }
+  },
+  {
+    name: "Коллагеностимуляция",
+    price: 24000,
+    components: {
+      "цитофлавин": 10,
+      "коэнзим композитум": 1,
+      "эссенциале н": 2,
+      "аминовен": 100,
+      "аддамель н": 0.5,
+      "l-карнитин": 10,
+      "витамин с": 1000,
+      "глутатион": 600
+    }
+  },
+  {
+    name: "Jetlag",
+    price: 16000,
+    components: {
+      "цитофлавин": 10,
+      "коэнзим композитум": 1,
+      "комплекс витаминов группы в": 1,
+      "магния сульфат": 3,
+      "пиридоксин": 2,
+      "кокарбоксилаза": 2,
+      "l-лизин": 10,
+      "l-карнитин": 10,
+      "витамин с": 1000,
+      "витамин в12": 1
+    }
+  },
+  {
+    name: "Противоотечная процедура",
+    price: 9000,
+    components: {
+      "димефосфон": 2,
+      "l-лизин": 10,
+      "лимфомиозот": 1
+    }
+  },
+  {
+    name: "Стоп Псориаз",
+    price: 16500,
+    components: {
+      "реамберин": 250,
+      "эссенциале н": 2,
+      "l-лизин": 10,
+      "витамин с": 1000,
+      "кальция глюконат": 10,
+      "фосфоглив": 1
+    }
+  },
+  {
+    name: "Восстановление печени",
+    price: 21000,
+    components: {
+      "ремаксол": 400,
+      "комплекс витаминов группы в": 1,
+      "гептрал": 800,
+      "эссенциале н": 1,
+      "глутатион": 600
+    }
+  },
+  {
+    name: "После вечеринки",
+    price: 13500,
+    components: {
+      "ремаксол": 500,
+      "панангин": 10,
+      "комплекс витаминов группы в": 1,
+      "натрия тиосульфат": 10,
+      "витамин с": 1000,
+      "l-карнитин": 10
+    }
+  }
 ];
 
 /* -------------------------------------------------------
-   3. Дополнительные препараты (ADDITIONAL_PRICES)
+   3. Список доп. препаратов (название -> {price, dose})
+   + Новые препараты, + Изм. цена эссенциале Н
 ---------------------------------------------------------*/
 const ADDITIONAL_PRICES = {
   "реамберин":           { price: 4000, dose: 250 },
@@ -350,7 +643,7 @@ const ADDITIONAL_PRICES = {
 };
 
 /* -------------------------------------------------------
-   4. Базы
+   4. Базы (с корректировками)
 ---------------------------------------------------------*/
 const BASES = [
   { name: "Бустер физ.р-р", price: 0 },
@@ -360,15 +653,22 @@ const BASES = [
   { name: "физ р-р 100", price: 0 },
   { name: "физ р-р 200", price: 0 },
   { name: "физ р-р 250", price: 0 },
+
+  // Платные:
   { name: "Стерофундин 500", price: 4000 },
   { name: "Фриостерин 500", price: 4000 },
   { name: "Реамбирин 250",  price: 4000 },
   { name: "Ремаксол 400",   price: 4000 },
+
+  // Дополнительно (сделаны платными)
   { name: "Аминовен 100 мл", price: 8000 },
   { name: "Аминовен 500 мл", price: 10000 },
   { name: "Смофлипид 100 мл", price: 10000 }
 ];
 
+/*
+   Если база — платная, то обычно она добавляет препарат
+*/
 const BASE_TO_COMPONENT = {
   "реамбирин 250":   { "реамберин": 250 },
   "ремаксол 400":    { "ремаксол": 400 },
@@ -380,18 +680,21 @@ const BASE_TO_COMPONENT = {
 };
 
 /* -------------------------------------------------------
-   5. Глобальные переменные для баз и выбранных препаратов
+   5. Глобальные переменные
 ---------------------------------------------------------*/
-let allBases = [];           // Массив собранных баз: {baseName, basePrice, selectedItems}
+let allBases = [];           // [{baseName, basePrice, selectedItems}, ...]
 let currentBaseName = null;
 let currentBasePrice = 0;
-let selectedItems = {};      // {название препарата: доза, ...}
+let selectedItems = {};      // {имя_препарата: доза, ...}
 let userFio = "";            // ФИО клиента
-let currentStep = 0;         // Текущий шаг (0,1,2,3)
+
+// Текущая "шаг"-сцена (0 - старт, 1 - ФИО, 2 - база, 3 - препараты)
+let currentStep = 0;
 
 /* -------------------------------------------------------
-   6. Нормализация и псевдонимы
+   6. Псевдонимы ингредиентов и функция нормализации
 ---------------------------------------------------------*/
+// Добавляем алиасы для ингредиентов
 const INGREDIENT_ALIASES = {
   "ликферр": "феринжект",
   "берлитион": "тиоктацид"
@@ -418,10 +721,10 @@ const allNames = Object.keys(additionalItemsByName);
    8. Смена шага
 ---------------------------------------------------------*/
 const containers = [
-  "startContainer",      // Шаг 0
-  "fioContainer",        // Шаг 1
-  "baseContainer",       // Шаг 2
-  "searchContainer"      // Шаг 3
+  "startContainer",      // step 0
+  "fioContainer",        // step 1
+  "baseContainer",       // step 2
+  "searchContainer"      // step 3
 ];
 
 function showStep(stepIndex) {
@@ -441,28 +744,35 @@ function handleSearchInput() {
   const query = document.getElementById('searchInput').value.toLowerCase().trim();
   const suggestionsDiv = document.getElementById('suggestions');
   suggestionsDiv.innerHTML = '';
+
   if (!query) return;
   const matched = allNames.filter(n => n.includes(query));
+
   matched.forEach(m => {
     const info = additionalItemsByName[m];
     const div = document.createElement('div');
     div.className = 'suggestion';
+
     const spanName = document.createElement('span');
     spanName.textContent = m;
+
     const doseInput = document.createElement('input');
     doseInput.type = 'number';
     doseInput.step = '0.01';
-    doseInput.value = info.dose;
+    doseInput.value = info.dose; // дефолтная доза
+
     const addBtn = document.createElement('button');
     addBtn.textContent = 'Добавить';
     addBtn.onclick = () => {
       const d = parseFloat(doseInput.value) || info.dose;
+      // Используем нормализованное имя
       const normName = normalizeIngredient(m);
       selectedItems[normName] = (selectedItems[normName] || 0) + d;
       document.getElementById('searchInput').value = '';
       suggestionsDiv.innerHTML = '';
       renderSelectedItems();
     };
+
     div.appendChild(spanName);
     div.appendChild(doseInput);
     div.appendChild(addBtn);
@@ -476,14 +786,18 @@ function handleSearchInput() {
 function renderSelectedItems() {
   const container = document.getElementById('selectedItems');
   container.innerHTML = '<h3>Выбранные препараты:</h3>';
+
   if (Object.keys(selectedItems).length === 0) {
     container.innerHTML += '<p>Пусто</p>';
     return;
   }
+
   const ul = document.createElement('ul');
   for (const name in selectedItems) {
     const li = document.createElement('li');
     li.textContent = `${name}: ${selectedItems[name]}`;
+
+    // Изменить дозировку
     const editBtn = document.createElement('button');
     editBtn.textContent = 'Изм.';
     editBtn.onclick = () => {
@@ -497,16 +811,20 @@ function renderSelectedItems() {
         }
       }
     };
+
+    // Удалить
     const removeBtn = document.createElement('button');
     removeBtn.textContent = 'X';
     removeBtn.onclick = () => {
       delete selectedItems[name];
       renderSelectedItems();
     };
+
     const btnsWrapper = document.createElement('span');
     btnsWrapper.appendChild(editBtn);
     btnsWrapper.appendChild(removeBtn);
     li.appendChild(btnsWrapper);
+
     ul.appendChild(li);
   }
   container.appendChild(ul);
@@ -523,25 +841,19 @@ function renderSelectedItems() {
 }
 
 /* -------------------------------------------------------
-   11. Вспомогательная функция: расчет стоимости дополнительного ингредиента
----------------------------------------------------------*/
-function calculateCostForIngredient(name, amount) {
-  const info = additionalItemsByName[name.toLowerCase()];
-  if (!info) return 0;
-  let factor = amount / info.dose;
-  factor = parseFloat(factor.toFixed(2)); // Округление до 2 знаков
-  return Math.round(info.price * factor);
-}
-
-/* -------------------------------------------------------
-   12. Поиск совпадения коктейля для одной базы
+   11. Поиск совпадения коктейля для одной базы
+   Изменения:
+   • Перед объединением ингредиентов выполняется нормализация (с учётом псевдонимов)
+   • Перебираем все коктейли, собираем те, что удовлетворяют требованиям,
+     и выбираем вариант с минимальным избытком ингредиентов
 ---------------------------------------------------------*/
 function findCocktailPartialMatch(selected, baseName) {
   if (!baseName) return null;
   const normalizedBaseName = baseName.toLowerCase();
   const baseObj = BASE_TO_COMPONENT[normalizedBaseName] || {};
+
   const merged = {};
-  // Добавляем компоненты базы (с нормализацией)
+  // Добавляем ингредиенты базы с нормализацией
   for (const k in baseObj) {
     const normKey = normalizeIngredient(k);
     merged[normKey] = (merged[normKey] || 0) + baseObj[k];
@@ -551,11 +863,14 @@ function findCocktailPartialMatch(selected, baseName) {
     const normKey = normalizeIngredient(k);
     merged[normKey] = (merged[normKey] || 0) + selected[k];
   }
+
   let bestMatch = null;
   let bestExcess = Infinity;
+  // Перебираем все коктейли
   for (const c of COCKTAILS) {
     let enough = true;
     let excess = 0;
+    // Проверяем, хватает ли ингредиентов для каждого компонента коктейля
     for (const ck in c.components) {
       const normCk = normalizeIngredient(ck);
       if (!merged[normCk] || merged[normCk] < c.components[ck]) {
@@ -566,8 +881,10 @@ function findCocktailPartialMatch(selected, baseName) {
       }
     }
     if (!enough) continue;
+    // Выбираем коктейль с минимальным избытком ингредиентов
     if (excess < bestExcess) {
       bestExcess = excess;
+      // Вычисляем остаток
       const leftover = {};
       for (const ck in c.components) {
         const normCk = normalizeIngredient(ck);
@@ -583,10 +900,12 @@ function findCocktailPartialMatch(selected, baseName) {
 }
 
 /* -------------------------------------------------------
-   13. Поиск глобального коктейля для всех баз
+   12. Поиск глобального (единого) коктейля для всех баз
+   Аналогично выполняется нормализация ингредиентов
 ---------------------------------------------------------*/
 function findSingleGlobalCocktail() {
   const globalItems = {};
+
   for (const b of allBases) {
     const baseComp = BASE_TO_COMPONENT[b.baseName.toLowerCase()] || {};
     for (const k in baseComp) {
@@ -598,6 +917,7 @@ function findSingleGlobalCocktail() {
       globalItems[normKey] = (globalItems[normKey] || 0) + b.selectedItems[k];
     }
   }
+
   let bestMatch = null;
   let bestExcess = Infinity;
   for (const c of COCKTAILS) {
@@ -630,27 +950,21 @@ function findSingleGlobalCocktail() {
 }
 
 /* -------------------------------------------------------
-   14. Проверка, входит ли база в коктейль (с нормализацией)
+   13. Проверка, входит ли платная база в коктейль
 ---------------------------------------------------------*/
 function baseIsInCocktail(cocktail, baseName) {
   const baseKeyVals = BASE_TO_COMPONENT[baseName.toLowerCase()];
   if (!baseKeyVals) return false;
   for (const k in baseKeyVals) {
-    const normKey = normalizeIngredient(k);
-    let found = false;
-    for (const ck in cocktail.components) {
-      if (normalizeIngredient(ck) === normKey && cocktail.components[ck] === baseKeyVals[k]) {
-        found = true;
-        break;
-      }
+    if (cocktail.components[k] !== baseKeyVals[k]) {
+      return false;
     }
-    if (!found) return false;
   }
   return true;
 }
 
 /* -------------------------------------------------------
-   15. Формирование текста "Прописи"
+   14. Формирование «Прописи»
 ---------------------------------------------------------*/
 function buildPropis() {
   let lines = [];
@@ -674,7 +988,7 @@ function capitalize(str) {
 }
 
 /* -------------------------------------------------------
-   16. Сохранение текущей базы
+   15. Сохранение текущей базы
 ---------------------------------------------------------*/
 function saveCurrentBase() {
   if (currentBaseName) {
@@ -691,15 +1005,17 @@ function saveCurrentBase() {
 }
 
 /* -------------------------------------------------------
-   17. Отрисовка ранее собранных баз
+   16. Отрисовка ранее собранных баз
 ---------------------------------------------------------*/
 function renderPreviousBases() {
   const container = document.getElementById('previousBasesList');
   container.innerHTML = '';
+
   allBases.forEach((b, idx) => {
     const baseDiv = document.createElement('div');
     baseDiv.className = 'base-record';
     baseDiv.innerHTML = `<strong>База #${idx + 1}: ${b.baseName}</strong>`;
+
     if (Object.keys(b.selectedItems).length === 0) {
       baseDiv.innerHTML += `<p>Без доп. препаратов</p>`;
     } else {
@@ -713,12 +1029,15 @@ function renderPreviousBases() {
     }
     container.appendChild(baseDiv);
   });
+
   document.getElementById('previousBasesContainer').style.display =
     allBases.length > 0 ? 'block' : 'none';
 }
 
 /* -------------------------------------------------------
-   18. Расчет итоговой цены и формирование объяснения
+   17. Расчет цены с автоматическими скидками
+   При вычислении стоимости для лишних ингредиентов используется
+   нормализация имени (чтобы корректно брать цену из additionalItemsByName)
 ---------------------------------------------------------*/
 function calculateTotalAndExplanation() {
   const globalCheck = findSingleGlobalCocktail();
@@ -742,9 +1061,17 @@ function calculateTotalAndExplanation() {
     let leftoverCost = 0;
     let leftoverStrings = [];
     for (const name in leftover) {
-      const cost = calculateCostForIngredient(name, leftover[name]);
-      leftoverCost += cost;
-      leftoverStrings.push(`+ Доп. ${capitalize(name)} ${leftover[name]} (цена: ${cost} руб.)`);
+      const normName = name.toLowerCase();
+      const info = additionalItemsByName[normName];
+      if (info) {
+        let factor = leftover[name] / info.dose;
+        if (factor < 0.0001) factor = 1;
+        const cost = Math.round(info.price * factor);
+        leftoverCost += cost;
+        leftoverStrings.push(`+ Доп. ${capitalize(name)} ${leftover[name]} (цена: ${cost} руб.)`);
+      } else {
+        leftoverStrings.push(`+ Доп. ${capitalize(name)} ${leftover[name]} (цена: 0 руб.)`);
+      }
     }
     grandTotal += leftoverCost;
 
@@ -761,6 +1088,7 @@ function calculateTotalAndExplanation() {
     allBases.forEach((b, i) => {
       let line = `База #${i + 1}: ${b.baseName}`;
       let baseSum = 0;
+
       const localCheck = findCocktailPartialMatch(b.selectedItems, b.baseName);
       if (localCheck) {
         const { cocktail, leftover } = localCheck;
@@ -768,15 +1096,25 @@ function calculateTotalAndExplanation() {
         if (b.basePrice > 0 && !baseIsInCocktail(cocktail, b.baseName)) {
           baseAdd = b.basePrice;
         }
+
         const cPrice = cocktail.price;
         let leftoverCost = 0;
         let leftoverStrings = [];
         for (const name in leftover) {
-          const cost = calculateCostForIngredient(name, leftover[name]);
-          leftoverCost += cost;
-          leftoverStrings.push(`+ Доп. ${capitalize(name)} ${leftover[name]} (цена: ${cost} руб.)`);
+          const normName = name.toLowerCase();
+          const info = additionalItemsByName[normName];
+          if (info) {
+            let factor = leftover[name] / info.dose;
+            if (factor < 0.0001) factor = 1;
+            const cost = Math.round(info.price * factor);
+            leftoverCost += cost;
+            leftoverStrings.push(`+ Доп. ${capitalize(name)} ${leftover[name]} (цена: ${cost} руб.)`);
+          } else {
+            leftoverStrings.push(`+ Доп. ${capitalize(name)} ${leftover[name]} (цена: 0 руб.)`);
+          }
         }
         baseSum = baseAdd + cPrice + leftoverCost;
+
         line += `\n   Коктейль "${cocktail.name}" (цена: ${cPrice} руб.)`;
         if (baseAdd > 0) {
           line += `\n   + Платная база (цена: ${baseAdd} руб.)`;
@@ -791,16 +1129,26 @@ function calculateTotalAndExplanation() {
           line += `\n   Платная база (цена: ${b.basePrice} руб.)`;
         }
         for (const name in b.selectedItems) {
-          const cost = calculateCostForIngredient(name, b.selectedItems[name]);
-          baseSum += cost;
-          line += `\n   "${capitalize(name)}" доза ${b.selectedItems[name]} => ${cost} руб.`;
+          const normName = name.toLowerCase();
+          const info = additionalItemsByName[normName];
+          if (info) {
+            let factor = b.selectedItems[name] / info.dose;
+            if (factor < 0.0001) factor = 1;
+            const cost = Math.round(info.price * factor);
+            baseSum += cost;
+            line += `\n   "${capitalize(name)}" доза ${b.selectedItems[name]} => ${cost} руб.`;
+          } else {
+            line += `\n   "${capitalize(name)}" доза ${b.selectedItems[name]} => 0 руб.`;
+          }
         }
         line += `\n   Итого по базе #${i + 1}: ${baseSum} руб.`;
       }
+
       allBasesLines.push(line);
       grandTotal += baseSum;
     });
-    detailsBlock = 
+
+    detailsBlock =
 `Детали расчета:
 ${allBasesLines.join("\n\n")}
 Итого без скидки: ${grandTotal} руб.`;
@@ -824,6 +1172,7 @@ ${allBasesLines.join("\n\n")}
   }
 
   const propis = buildPropis();
+
   const explanation =
 `Ваш расчет:
 
@@ -840,12 +1189,13 @@ ${propis}
 }
 
 /* -------------------------------------------------------
-   19. Обработчик кнопки "Готово"
+   18. Обработчик кнопки "Готово"
 ---------------------------------------------------------*/
 function onDone() {
   saveCurrentBase();
   renderPreviousBases();
   const { total, explanation } = calculateTotalAndExplanation();
+
   const dataToSend = {
     user_id: userId,
     user_fio: userFio,
@@ -857,7 +1207,7 @@ function onDone() {
 }
 
 /* -------------------------------------------------------
-   20. Обработчики UI
+   19. Обработчики UI
 ---------------------------------------------------------*/
 function onStart() {
   showStep(1);
@@ -878,7 +1228,9 @@ function onSelectBase(baseName, basePrice) {
   currentBaseName = baseName;
   currentBasePrice = basePrice;
   selectedItems = {};
+
   document.getElementById('currentBaseIndicator').textContent = "Текущая база: " + baseName;
+
   showStep(3);
   renderSelectedItems();
 }
@@ -896,7 +1248,7 @@ function goBack() {
 }
 
 /* -------------------------------------------------------
-   21. Инициализация при загрузке
+   20. Инициализация при загрузке
 ---------------------------------------------------------*/
 window.onload = () => {
   document.getElementById('startBtn').addEventListener('click', onStart);
@@ -904,6 +1256,7 @@ window.onload = () => {
   document.getElementById('searchInput').addEventListener('input', handleSearchInput);
   document.getElementById('doneBtn').addEventListener('click', onDone);
   document.getElementById('newBaseBtn').addEventListener('click', onNewBase);
+
   document.getElementById('backFromFioBtn').addEventListener('click', () => showStep(0));
   document.getElementById('backFromBaseBtn').addEventListener('click', () => showStep(1));
   document.getElementById('backFromSearchBtn').addEventListener('click', () => showStep(2));
