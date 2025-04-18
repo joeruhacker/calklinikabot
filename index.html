@@ -5,207 +5,59 @@
   <title>Telegram MiniApp</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Шрифт Google Roboto -->
+  <!-- Шрифт Google Roboto -->
   <style>
     @import url('https://fonts.googleapis.com/css?family=Roboto&display=swap');
-
     :root {
-      --primary-color: #4285f4; /* Основной синий цвет */
+      --primary-color: #4285f4;
       --primary-dark: #3367d6;
       --background-color: #FAFAFA;
       --text-color: #212121;
       --border-color: #E0E0E0;
     }
-
-    * {
-      box-sizing: border-box;
-      font-family: 'Roboto', sans-serif;
-    }
-
-    body {
-      margin: 0;
-      padding: 0;
-      background: var(--background-color);
-      color: var(--text-color);
-    }
-
-    /* Контейнер */
-    #app {
-      width: 100%;
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 16px;
-    }
-
-    /* Заголовок */
-    h1 {
-      text-align: center;
-      color: var(--primary-color);
-      margin-top: 0;
-    }
-
-    /* Кнопки */
-    button {
-      background: var(--primary-color);
-      color: #fff;
-      border: none;
-      padding: 12px 20px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 1rem;
-      margin: 4px;
-    }
-    button:hover {
-      background: var(--primary-dark);
-    }
-
-    /* Вспомогательные кнопки (кнопка назад и т.п.) */
-    .secondary-btn {
-      background: #ccc;
-      color: #333;
-    }
-    .secondary-btn:hover {
-      background: #bbb;
-    }
-
-    /* Инпуты (имитация Material Design) */
-    .md-input {
-      position: relative;
-      margin: 20px 0;
-      width: 100%;
-    }
-    .md-input input {
-      width: 100%;
-      font-size: 1rem;
-      padding: 12px 8px 8px;
-      border: none;
-      border-bottom: 2px solid #ccc;
-      background: transparent;
-      outline: none;
-      transition: border-color 0.3s;
-    }
-    .md-input input:focus {
-      border-color: var(--primary-color);
-    }
-    .md-input label {
-      position: absolute;
-      top: 12px;
-      left: 8px;
-      font-size: 1rem;
-      color: #999;
-      pointer-events: none;
-      transition: 0.3s ease all;
-    }
-    .md-input input:focus ~ label,
-    .md-input input:not(:placeholder-shown) ~ label {
-      top: -8px;
-      font-size: 0.8rem;
-      color: var(--primary-color);
-    }
-
-    /* Скрытые блоки */
-    .hidden {
-      display: none;
-    }
-
-    /* Секции */
-    .section {
-      margin-top: 20px;
-    }
-
-    /* Подсказки (автокомплит) */
-    .suggestion {
-      display: flex;
-      align-items: center;
-      background: #FFFFFF;
-      padding: 8px;
-      margin: 2px 0;
-      border: 1px solid #CCC;
-      border-radius: 4px;
-      gap: 8px;
-    }
-    .suggestion:hover {
-      background: #EEEEEE;
-    }
-    .suggestion span {
-      flex: 1;
-    }
-    .suggestion input[type="number"] {
-      width: 80px;
-      margin-right: 8px;
-    }
-
-    /* Список выбранных препаратов */
-    ul {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    li {
-      background: #FFFFFF;
-      margin-bottom: 4px;
-      padding: 8px;
-      border-radius: 4px;
-      border: 1px solid var(--border-color);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    li button {
-      margin: 0 4px;
-      font-size: 0.9rem;
-    }
-
-    /* Примечание о коктейле */
-    .note {
-      color: green;
-      margin-top: 8px;
-      font-weight: bold;
-    }
-
-    /* Ранее собранные базы */
-    .base-record {
-      border: 1px solid #ccc;
-      padding: 8px;
-      margin-bottom: 8px;
-      border-radius: 4px;
-      background: #fff;
-    }
-    .base-record strong {
-      color: #333;
-    }
-
-    /* Отображение текущей базы */
-    #currentBaseIndicator {
-      font-size: 1.1rem;
-      font-weight: bold;
-      margin: 12px 0;
-      color: var(--primary-color);
-    }
-
-    /* Адаптивность */
-    @media (max-width: 600px) {
-      button {
-        width: 100%;
-        margin-bottom: 8px;
-      }
-    }
-
+    *{box-sizing:border-box;font-family:'Roboto',sans-serif;}
+    body{margin:0;padding:0;background:var(--background-color);color:var(--text-color);}
+    #app{width:100%;max-width:800px;margin:0 auto;padding:16px;}
+    h1{text-align:center;color:var(--primary-color);margin-top:0;}
+    button{background:var(--primary-color);color:#fff;border:none;padding:12px 20px;border-radius:4px;cursor:pointer;font-size:1rem;margin:4px;}
+    button:hover{background:var(--primary-dark);}
+    .secondary-btn{background:#ccc;color:#333;}
+    .secondary-btn:hover{background:#bbb;}
+    .md-input{position:relative;margin:20px 0;width:100%;}
+    .md-input input{width:100%;font-size:1rem;padding:12px 8px 8px;border:none;border-bottom:2px solid #ccc;background:transparent;outline:none;transition:border-color .3s;}
+    .md-input input:focus{border-color:var(--primary-color);}
+    .md-input label{position:absolute;top:12px;left:8px;font-size:1rem;color:#999;pointer-events:none;transition:.3s ease all;}
+    .md-input input:focus~label,
+    .md-input input:not(:placeholder-shown)~label{top:-8px;font-size:.8rem;color:var(--primary-color);}
+    .hidden{display:none;}
+    .section{margin-top:20px;}
+    .suggestion{display:flex;align-items:center;background:#fff;padding:8px;margin:2px 0;border:1px solid #CCC;border-radius:4px;gap:8px;}
+    .suggestion:hover{background:#EEE;}
+    .suggestion span{flex:1;}
+    .suggestion input[type=number]{width:80px;margin-right:8px;}
+    ul{list-style:none;padding:0;margin:0;}
+    li{background:#fff;margin-bottom:4px;padding:8px;border-radius:4px;border:1px solid var(--border-color);display:flex;align-items:center;justify-content:space-between;}
+    li button{margin:0 4px;font-size:.9rem;}
+    .note{color:green;margin-top:8px;font-weight:bold;}
+    .base-record{border:1px solid #ccc;padding:8px;margin-bottom:8px;border-radius:4px;background:#fff;}
+    .base-record strong{color:#333;}
+    #currentBaseIndicator{font-size:1.1rem;font-weight:bold;margin:12px 0;color:var(--primary-color);}
+    @media(max-width:600px){button{width:100%;margin-bottom:8px;}}
   </style>
 
-  <!-- Подключаем Telegram WebApp JS -->
+  <!-- Telegram WebApp JS -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
 <div id="app">
   <h1>Cocktails Calculator</h1>
 
-  <!-- Шаг 0. "Начать" -->
+  <!-- Шаг 0 -->
   <div id="startContainer">
     <button id="startBtn">Начать</button>
   </div>
 
-  <!-- Шаг 1. Ввод ФИО -->
+  <!-- Шаг 1 -->
   <div id="fioContainer" class="hidden">
     <div class="md-input">
       <input type="text" id="fioInput" placeholder=" " />
@@ -215,14 +67,14 @@
     <button class="secondary-btn" id="backFromFioBtn">Назад</button>
   </div>
 
-  <!-- Шаг 2. Выбор базы -->
+  <!-- Шаг 2 -->
   <div id="baseContainer" class="hidden section">
     <p>Выберите базу (раствор):</p>
     <div id="baseButtons"></div>
     <button class="secondary-btn" id="backFromBaseBtn">Назад</button>
   </div>
 
-  <!-- Шаг 3. Добавление препаратов -->
+  <!-- Шаг 3 -->
   <div id="searchContainer" class="hidden section">
     <div id="currentBaseIndicator"></div>
     <div class="md-input">
@@ -230,7 +82,6 @@
       <label>Поиск препарата</label>
     </div>
     <div id="suggestions"></div>
-
     <div id="selectedItems"></div>
 
     <button id="newBaseBtn">Новая база</button>
@@ -238,7 +89,7 @@
     <button class="secondary-btn" id="backFromSearchBtn">Назад</button>
   </div>
 
-  <!-- Список уже собранных баз -->
+  <!-- Список собранных баз -->
   <div id="previousBasesContainer" class="hidden section">
     <h3>Уже собранные базы:</h3>
     <div id="previousBasesList"></div>
@@ -260,10 +111,10 @@ let userId = null;
    1. Telegram WebApp init
 ---------------------------------------------------------*/
 const tg = window.Telegram.WebApp;
-tg.expand(); // Расширяем окно
+tg.expand();
 
 /* -------------------------------------------------------
-   2. Коктейли (капельницы) – обновлённый список
+   2. Коктейли — теперь все дозы указаны полностью
 ---------------------------------------------------------*/
 const COCKTAILS = [
   {
@@ -271,32 +122,32 @@ const COCKTAILS = [
     price: 18000,
     components: {
       "комплекс витаминов группы в": 1,
-      "цитофлавин": 1,
-      "езафосфина": 1,
-      "глутатион": 1,
-      "цианокобаламин": 1,
-      "витамин с": 2
+      "цитофлавин": 10,
+      "езафосфина": 500,
+      "глутатион": 600,
+      "цианокобаламин": 0.5,
+      "витамин с": 2000
     }
   },
   {
     name: "Миланский коктейль день 2",
     price: 18000,
     components: {
-      "езафосфина": 1,
-      "глутатион": 1,
-      "цитофлавин": 10,
-      "лейковорин": 1
+      "езафосфина": 500,
+      "глутатион": 600,
+      "цитофлавин": 100,
+      "лейковорин": 50
     }
   },
   {
     name: "Спорт",
     price: 12000,
     components: {
-      "цитофлавин": 1,
-      "коэнзим": 1,
-      "актовегин": 10,
+      "цитофлавин": 10,
+      "коэнзим": 2.2,
+      "актовегин": 2000,
       "витамин с": 1000,
-      "л-карнитин": 2
+      "л-карнитин": 1000
     }
   },
   {
@@ -304,28 +155,28 @@ const COCKTAILS = [
     price: 10000,
     components: {
       "комплекс витаминов группы в": 1,
-      "магния сульфат": 3,
-      "пиридоксин": 2,
-      "кокарбоксилаза": 2,
-      "глутоксим": 1,
+      "магния сульфат": 2250,
+      "пиридоксин": 4,
+      "кокарбоксилаза": 4,
+      "глутоксим": 30,
       "витамин с": 1000,
-      "цианокобаламин": 1
+      "цианокобаламин": 0.5
     }
   },
   {
     name: "Детокс+",
     price: 12000,
     components: {
-      "реамберин": 1,
-      "гептрал": 1,
-      "глутатион": 1
+      "реамберин": 250,
+      "гептрал": 400,
+      "глутатион": 600
     }
   },
   {
     name: "Antiage",
     price: 14000,
     components: {
-      "глутатион": 1,
+      "глутатион": 600,
       "витамин с": 500
     }
   },
@@ -333,15 +184,15 @@ const COCKTAILS = [
     name: "Баланс железа",
     price: 6500,
     components: {
-      "феринжект": 1
+      "феринжект": 100
     }
   },
   {
     name: "Баланс железа +",
     price: 8000,
     components: {
-      "феринжект": 1,
-      "мексидол": 5,
+      "феринжект": 100,
+      "мексидол": 1250,
       "витамин с": 500
     }
   },
@@ -349,8 +200,8 @@ const COCKTAILS = [
     name: "Красивая кожа",
     price: 14000,
     components: {
-      "эссенциале н": 2,
-      "глутатион": 1,
+      "эссенциале н": 500,
+      "глутатион": 600,
       "витамин с": 1000
     }
   },
@@ -358,19 +209,19 @@ const COCKTAILS = [
     name: "Смарт",
     price: 10000,
     components: {
-      "цитофлавин": 1,
-      "коэнзим": 1,
-      "цераксон": 1,
-      "кавинтон": 1,
-      "актовегин": 5
+      "цитофлавин": 10,
+      "коэнзим": 2.2,
+      "цераксон": 1000,
+      "кавинтон": 25,
+      "актовегин": 1000
     }
   },
   {
     name: "Красота+",
     price: 12000,
     components: {
-      "тиоктацид": 1,
-      "глутатион": 1,
+      "тиоктацид": 600,
+      "глутатион": 600,
       "витамин с": 500
     }
   },
@@ -378,7 +229,7 @@ const COCKTAILS = [
     name: "Протеиновый бустер",
     price: 8000,
     components: {
-      "аминовен": 1,
+      "аминовен": 500,
       "аддамель н": 0.5
     }
   },
@@ -386,41 +237,41 @@ const COCKTAILS = [
     name: "Усталость прочь",
     price: 12000,
     components: {
-      "альфа-липоевая кислота": 1,
+      "альфа-липоевая кислота": 600,
       "комплекс витаминов группы в": 1,
-      "цитофлавин": 1,
-      "милдронат": 10,
-      "мексидол": 5
+      "цитофлавин": 10,
+      "милдронат": 5000,
+      "мексидол": 1250
     }
   },
   {
     name: "Орви help",
     price: 10000,
     components: {
-      "реамберин": 1,
+      "реамберин": 250,
       "комплекс витаминов группы в": 1,
       "витамин с": 3000,
-      "полиоксидоний": 1,
-      "кальция глюконат": 1
+      "полиоксидоний": 6,
+      "кальция глюконат": 1000
     }
   },
   {
     name: "Здоровый сон",
     price: 9000,
     components: {
-      "гептрал": 1,
-      "пикамилон": 1,
-      "магния сульфат": 4
+      "гептрал": 400,
+      "пикамилон": 200,
+      "магния сульфат": 3000
     }
   },
   {
     name: "Жиросжигание",
     price: 14000,
     components: {
-      "тиоктацид": 1,
-      "цитофлавин": 10,
-      "коэнзим": 1,
-      "л-карнитин": 1,
+      "тиоктацид": 600,
+      "цитофлавин": 100,
+      "коэнзим": 2.2,
+      "л-карнитин": 500,
       "витамин с": 1000
     }
   },
@@ -428,9 +279,9 @@ const COCKTAILS = [
     name: "Здоровые сосуды",
     price: 10000,
     components: {
-      "l-лизина эсцинат": 1,
-      "мексидол": 10,
-      "актовегин": 10,
+      "l-лизина эсцинат": 5,
+      "мексидол": 2500,
+      "актовегин": 2000,
       "витамин с": 500
     }
   },
@@ -438,8 +289,8 @@ const COCKTAILS = [
     name: "Здоровые волосы",
     price: 15000,
     components: {
-      "l-лизина эсцинат": 2,
-      "аминовен": 1,
+      "l-лизина эсцинат": 10,
+      "аминовен": 500,
       "аддамель н": 0.5,
       "комплекс витаминов группы в": 1,
       "лейковорин": 50
@@ -449,21 +300,21 @@ const COCKTAILS = [
     name: "Антигистаминная",
     price: 10000,
     components: {
-      "l-лизина эсцинат": 2,
-      "магния сульфат": 3,
-      "пиридоксин": 2,
-      "натрия тиосульфат": 10,
-      "кальция глюконат": 1
+      "l-лизина эсцинат": 10,
+      "магния сульфат": 2250,
+      "пиридоксин": 4,
+      "натрия тиосульфат": 30000,
+      "кальция глюконат": 1000
     }
   },
   {
     name: "Противовирусная",
     price: 12000,
     components: {
-      "реамберин": 1,
-      "l-лизина эсцинат": 2,
-      "циклоферон": 1,
-      "кальция глюконат": 1,
+      "реамберин": 250,
+      "l-лизина эсцинат": 10,
+      "циклоферон": 250,
+      "кальция глюконат": 1000,
       "витамин с": 1000
     }
   },
@@ -471,18 +322,18 @@ const COCKTAILS = [
     name: "Пост ковид",
     price: 10000,
     components: {
-      "димефосфон": 2,
-      "реамберин": 1,
+      "димефосфон": 4,
+      "реамберин": 250,
       "комплекс витаминов группы в": 1,
-      "л-карнитин": 2,
-      "цераксон": 1
+      "л-карнитин": 1000,
+      "цераксон": 1000
     }
   },
   {
     name: "Омега",
     price: 12000,
     components: {
-      "смофлипид": 1,
+      "смофлипид": 100,
       "виталипид н": 2,
       "комплекс витаминов группы в": 1
     }
@@ -491,34 +342,34 @@ const COCKTAILS = [
     name: "Brain activity",
     price: 10000,
     components: {
-      "цитофлавин": 1,
-      "пирацетам": 3,
-      "мексидол": 10,
-      "актовегин": 5
+      "цитофлавин": 10,
+      "пирацетам": 3000,
+      "мексидол": 2500,
+      "актовегин": 1000
     }
   },
   {
     name: "Иммунитет",
     price: 17000,
     components: {
-      "реамберин": 1,
+      "реамберин": 250,
       "комплекс витаминов группы в": 1,
-      "тамерит": 2,
+      "тамерит": 200,
       "витамин с": 3000,
-      "цераксон": 1,
-      "кальция глюконат": 10
+      "цераксон": 1000,
+      "кальция глюконат": 10000
     }
   },
   {
     name: "Коллагеностимуляция",
     price: 24000,
     components: {
-      "цитофлавин": 1,
-      "коэнзим": 1,
-      "эссенциале н": 2,
-      "аминовен": 1,
+      "цитофлавин": 10,
+      "коэнзим": 2.2,
+      "эссенциале н": 500,
+      "аминовен": 500,
       "аддамель н": 0.5,
-      "л-карнитин": 1,
+      "л-карнитин": 500,
       "витамин с": 1000,
       "глутатион": 600
     }
@@ -527,31 +378,31 @@ const COCKTAILS = [
     name: "Jetlag",
     price: 16000,
     components: {
-      "цитофлавин": 10,
-      "коэнзим": 1,
+      "цитофлавин": 100,
+      "коэнзим": 2.2,
       "комплекс витаминов группы в": 1,
-      "магния сульфат": 3,
-      "пиридоксин": 2,
-      "кокарбоксилаза": 2,
-      "l-лизина эсцинат": 10,
-      "л-карнитин": 1,
+      "магния сульфат": 2250,
+      "пиридоксин": 4,
+      "кокарбоксилаза": 4,
+      "l-лизина эсцинат": 50,
+      "л-карнитин": 500,
       "витамин с": 1000,
-      "цианокобаламин": 1
+      "цианокобаламин": 0.5
     }
   },
   {
     name: "Противоотечная процедура",
     price: 9000,
     components: {
-      "димефосфон": 2,
-      "l-лизина эсцинат": 2,
-      "лимфомиозот": 1
+      "димефосфон": 4,
+      "l-лизина эсцинат": 10,
+      "лимфомиозот": 1.1
     }
   }
 ];
 
 /* -------------------------------------------------------
-   3. Список доп. препаратов (обновлённый по новому списку)
+   3. Цены доп. препаратов (без изменений)
 ---------------------------------------------------------*/
 const ADDITIONAL_PRICES = {
   "глутатион":           { price: 7000, dose: 600 },
@@ -561,7 +412,7 @@ const ADDITIONAL_PRICES = {
   "цераксон":            { price: 2000, dose: 1000 },
   "димефосфон":          { price: 4000, dose: 2 },
   "лимфомиозот":         { price: 2500, dose: 1.1 },
-  "цианокобаламин":       { price: 2000, dose: 0.5 },
+  "цианокобаламин":      { price: 2000, dose: 0.5 },
   "лейковорин":          { price: 5000, dose: 50 },
   "магния сульфат":      { price: 2000, dose: 750 },
   "кальция глюконат":    { price: 2000, dose: 1000 },
@@ -587,7 +438,6 @@ const ADDITIONAL_PRICES = {
   "церетон":             { price: 2000, dose: 1000 },
   "кавинтон":            { price: 2000, dose: 25 },
   "феринжект":           { price: 6000, dose: 100 },
-  "ликферр":             { price: 6000, dose: 100 },
   "комплекс витаминов группы в": { price: 4000, dose: 1 },
   "пиридоксин":          { price: 2000, dose: 2 },
   "тиамин":              { price: 2000, dose: 2 },
@@ -606,7 +456,6 @@ const ADDITIONAL_PRICES = {
   "витамин с":           { price: 2000, dose: 1000 },
   "витамин д":           { price: 6000, dose: 300000 },
   "тамерит":             { price: 4500, dose: 100 },
-  "венофер":             { price: 6000, dose: 100 },
   "моликсан":            { price: 2000, dose: 30 },
   "тиоцетан":            { price: 2000, dose: 1 }
 };
