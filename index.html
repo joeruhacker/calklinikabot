@@ -847,88 +847,133 @@
       document.getElementById('previousBasesContainer').style.display = allBases.length?'block':'none';
     }
 
-// ─────────────────────────────────────────────────────────────
-//  ⬇︎ заменить ВЕСЬ старый calculateTotalAndExplanation на это
-// ─────────────────────────────────────────────────────────────
-function calculateTotalAndExplanation () {
-
-  // 1. Пытаемся собрать «глобальный» коктейль
-  const g = findSingleGlobalCocktail();
-  const haveGlobal = Boolean(g);
-  const cocktail   = g?.cocktail ?? null;
-
-  // 2. Подсчитываем, какие (и сколько) платных баз нужны коктейлю
-  const needLeft   = cocktail ? { ...cocktail.components } : {};
-  const paidBases  = [];        // сюда собираем все {base, isFree}
-
+function calculateTotalAndExplanation() {
+  // 1. Собираем «глобальный» коктейль и остатки
+  const globalCheck = findSingleGlobalCocktail(); 
+  const cocktail    = globalCheck?.cocktail ?? null;
+  const leftover    = globalCheck?.leftover  || {};
+  
+  // 2. Подсчёт платных баз
+  const needLeft  = cocktail ? { ...cocktail.components } : {};
+  const paidBases = []; // { base, baseName, basePrice, selectedItems, isFree }
   for (const b of allBases) {
-    if (!b.basePrice) { paidBases.push({...b, isFree:false}); continue; }
-
+    if (!b.basePrice) {
+      paidBases.push({ ...b, isFree: false });
+      continue;
+    }
     const comp = BASE_TO_COMPONENT[b.baseName.toLowerCase()];
-    if (!comp || !cocktail) { paidBases.push({...b, isFree:false}); continue; }
-
-    // проверяем, может ли ЭТА база «закрыть» ещё нужный объём ингред-тов
+    if (!comp || !cocktail) {
+      paidBases.push({ ...b, isFree: false });
+      continue;
+    }
     let fits = true;
     for (const k in comp) {
-      if (!needLeft[k] || needLeft[k] < comp[k]) { fits = false; break; }
+      if (!needLeft[k] || needLeft[k] < comp[k]) {
+        fits = false;
+        break;
+      }
     }
-
-    if (fits) {                 // «съедаем» дозу и НЕ считаем стоимость
+    if (fits) {
       for (const k in comp) needLeft[k] -= comp[k];
-      paidBases.push({...b, isFree:true});
-    } else {                    // коктейлю больше не нужно — база оплачивается
-      paidBases.push({...b, isFree:false});
+      paidBases.push({ ...b, isFree: true });
+    } else {
+      paidBases.push({ ...b, isFree: false });
     }
   }
-
-  // 3. Считаем стоимость
+  
+  // 3. Считаем сумму без скидки
   let sum = 0;
-
-  // 3.1 собственно цена коктейля (если он вообще собран)
   if (cocktail) sum += cocktail.price;
-
-  // 3.2 стоимость тех платных баз, что НЕ вошли в коктейль
-  for (const b of paidBases) if (!b.isFree) sum += b.basePrice;
-
-  // 3.3 стоимость остаточных препаратов
-  //     – из «лишних» уже оплаченных баз их не считаем второй раз
+  for (const b of paidBases) {
+    if (!b.isFree) sum += b.basePrice;
+  }
+  // остаточные препараты
   const paidIngredients = {};
-  for (const b of paidBases) if (!b.isFree && BASE_TO_COMPONENT[b.baseName.toLowerCase()]) {
+  for (const b of paidBases) {
+    if (!b.isFree && BASE_TO_COMPONENT[b.baseName.toLowerCase()]) {
       const comp = BASE_TO_COMPONENT[b.baseName.toLowerCase()];
       for (const k in comp) paidIngredients[k] = (paidIngredients[k]||0) + comp[k];
+    }
   }
-
-  const gi = {};                        // глобальный инвентарь ингредиентов
+  const gi = {};
   allBases.forEach(b => {
-      const c = BASE_TO_COMPONENT[b.baseName.toLowerCase()] || {};
-      for (const k in c) gi[k]=(gi[k]||0)+c[k];
-      for (const k in b.selectedItems)  gi[normalizeIngredient(k)]=(gi[normalizeIngredient(k)]||0)+b.selectedItems[k];
+    const c = BASE_TO_COMPONENT[b.baseName.toLowerCase()] || {};
+    for (const k in c) gi[k] = (gi[k]||0) + c[k];
+    for (const k in b.selectedItems) {
+      const nk = normalizeIngredient(k);
+      gi[nk] = (gi[nk]||0) + b.selectedItems[k];
+    }
   });
-
   if (cocktail) {
-    for (const k in cocktail.components)
+    for (const k in cocktail.components) {
       gi[normalizeIngredient(k)] -= cocktail.components[k];
+    }
   }
-
-  for (const k in gi) if (gi[k] > 0) {          // остался «лишний» объём
-    const already = paidIngredients[k] || 0;
-    const billable = Math.max(gi[k] - already, 0);   // то, что ещё надо оплатить
-    if (!billable) continue;
-
-    const info = additionalItemsByName[k];
-    if (!info) continue;
-    const factor = billable / info.dose < .0001 ? 1 : billable / info.dose;
-    sum += Math.round(info.price * factor);
+  for (const k in gi) {
+    if (gi[k] > 0) {
+      const already = paidIngredients[k] || 0;
+      const billable = Math.max(gi[k] - already, 0);
+      if (!billable) continue;
+      const info = additionalItemsByName[k];
+      if (!info) continue;
+      const factor = billable / info.dose < 0.0001 ? 1 : billable / info.dose;
+      sum += Math.round(info.price * factor);
+    }
   }
-
+  
   // 4. Скидка
-  const disc = sum > 30000 ? 0.10 : sum > 25000 ? 0.07 : sum > 20000 ? 0.05 : 0;
-  const total = disc ? Math.round(sum*(1-disc)) : sum;
+  const disc = sum > 30000 ? 0.10
+             : sum > 25000 ? 0.07
+             : sum > 20000 ? 0.05
+             : 0;
+  const total = disc ? Math.round(sum * (1 - disc)) : sum;
+  
+  // 5. Собираем подробности расчёта
+  // 5.1 строки по платным базам
+  const paidStr = paidBases
+    .filter(b => !b.isFree)
+    .map(b => `+ База "${b.baseName}" (${b.basePrice} руб.)`);
+  
+  // 5.2 строки по остаткам из глобального коктейля
+  const leftoverStr = [];
+  for (const name in leftover) {
+    const info = additionalItemsByName[name];
+    if (!info) continue;
+    let factor = leftover[name] / info.dose;
+    if (factor < 0.0001) factor = 1;
+    const cost = Math.round(info.price * factor);
+    leftoverStr.push(`+ Доп. ${capitalize(name)} ${leftover[name]} (цена: ${cost} руб.)`);
+  }
+  
+  // 5.3 итоговая строка без скидки
+  const details =
+    `Коктейль "${cocktail?.name || '—'}" (цена: ${cocktail?.price || 0} руб.)` +
+    (paidStr.length    ? "\n" + paidStr.join("\n")    : "") +
+    (leftoverStr.length? "\n" + leftoverStr.join("\n"): "") +
+    `\nИтого без скидки: ${sum} руб.`;
+  
+  // 5.4 сообщение о скидке
+  let discountMsg = "";
+  if (disc) {
+    const discAmt = Math.round(sum * disc);
+    discountMsg = `\nПрименена скидка ${Math.round(disc * 100)}% (${discAmt} руб.). Итог: ${total} руб.`;
+  }
+  
+  // 6. Пропись суммы и ФИО
+  const propis = buildPropis();  // должна быть функция, возвращающая сумму прописью
+  const explanation = 
+`Ваш расчёт:
 
-  return {
-    total,
-    explanation: `К оплате: ${total} руб. (${disc ? 'со скидкой ' + (disc*100) + '%' : 'без скидки'})`
-  };
+ФИО: ${userFio}
+Итоговая цена: ${total} руб.
+
+${details}${discountMsg}
+
+Пропись:
+${propis}
+`;
+  
+  return { total, explanation };
 }
 
     // 19. Кнопка «Готово»
